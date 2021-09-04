@@ -44,6 +44,7 @@
 #include "CommonLib/dtrace_blockstatistics.h"
 #endif
 
+#include "log.h"
 
 #include <math.h>
 
@@ -2082,6 +2083,16 @@ void EncSlice::encodeSlice   ( Picture* pcPic, OutputBitstream* pcSubstreams, ui
     bool isLastCTUinWPP    = !isLastCTUsinSlice && !isLastCTUinTile && wavefrontsEnabled && cs.pps->ctuIsTileColBd( pcSlice->getCtuAddrInSlice( ctuIdx + 1 ) % cs.pps->getPicWidthInCtu() );
     if (isLastCTUsinSlice || isLastCTUinTile || isLastCTUinWPP )         // this the the last CTU of the slice, tile, or WPP
     {
+      if (isLastCTUinWPP) {
+        binLogger.LogElement(SyntaxElement::end_of_subset_one_bit);
+      }
+      if (isLastCTUinTile) {
+        binLogger.LogElement(SyntaxElement::end_of_tile_one_bit);
+      }
+      if (isLastCTUsinSlice) {
+        binLogger.LogElement(SyntaxElement::end_of_slice_one_bit);
+      }
+
       m_CABACWriter->end_of_slice();  // end_of_slice_one_bit, end_of_tile_one_bit, or end_of_subset_one_bit
 
       // Byte-alignment in slice_data() when new tile

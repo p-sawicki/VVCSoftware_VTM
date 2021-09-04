@@ -50,7 +50,7 @@ set( CMAKE_POSITION_INDEPENDENT_CODE TRUE )
 set_property( GLOBAL PROPERTY USE_FOLDERS ON )
 
 # Include a utility module providing functions, macros, and settings
-include( ${CMAKE_SOURCE_DIR}/cmake/CMakeBuild/cmake/modules/BBuildEnv.cmake )
+include( ${CMAKE_CURRENT_SOURCE_DIR}/cmake/CMakeBuild/cmake/modules/BBuildEnv.cmake )
 
 # Enable warnings for some generators and toolsets.
 # bb_enable_warnings( gcc warnings-as-errors -Wno-sign-compare )
