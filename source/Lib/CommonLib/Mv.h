@@ -40,6 +40,10 @@
 
 #include "CommonDef.h"
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "mv.hpp"
+#endif
+
 //! \ingroup CommonLib
 //! \{
 
@@ -78,6 +82,17 @@ public:
 
   Mv(                    ) : hor( 0    ), ver( 0    ) {}
   Mv( int iHor, int iVer ) : hor( iHor ), ver( iVer ) {}
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::Mv() const { return EntropyCoding::Mv(hor, ver); }
+
+  const Mv &operator=(const EntropyCoding::Mv &rhs)
+  {
+    hor = rhs.hor;
+    ver = rhs.ver;
+    return *this;
+  }
+#endif
 
   // ------------------------------------------------------------------------------------------------------------------
   // set

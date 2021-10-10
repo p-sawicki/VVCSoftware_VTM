@@ -53,7 +53,23 @@
 #include <cmath>
 #include <algorithm>
 
+inline void setCtx(CABACWriter *writer, const Ctx &ctx)
+{
+#ifdef STANDALONE_ENTROPY_CODEC
+  writer->setCtx(ctx);
+#else
+  writer->getCtx() = ctx;
+#endif
+}
 
+inline void setCtx(CABACWriter *writer, SubCtx &&ctx)
+{
+#ifdef STANDALONE_ENTROPY_CODEC
+  writer->setCtx(Ctx::fromSubCtx(ctx));
+#else
+  writer->getCtx() = std::move(ctx);
+#endif
+}
 
 //! \ingroup EncoderLib
 //! \{
@@ -312,7 +328,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
   if (CS::isDualITree (cs) && isChromaEnabled (cs.pcv->chrFormat))
   {
-    m_CABACEstimator->getCtx() = m_CurrCtx->start;
+    setCtx(m_CABACEstimator, m_CurrCtx->start);
 
     partitioner.initCtu(area, CH_C, *cs.slice);
 
@@ -334,7 +350,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     (m_pcRateCtrl->getRCPic()->getLCU(ctuRsAddr)).m_actualMSE = (double)bestCS->dist / (double)m_pcRateCtrl->getRCPic()->getLCU(ctuRsAddr).m_numberOfPixel;
   }
   // reset context states and uninit context pointer
-  m_CABACEstimator->getCtx() = m_CurrCtx->start;
+  setCtx(m_CABACEstimator, m_CurrCtx->start);
   m_CurrCtx                  = 0;
 
 
@@ -491,7 +507,7 @@ bool EncCu::xCheckBestMode( CodingStructure *&tempCS, CodingStructure *&bestCS, 
   }
 
   // reset context states
-  m_CABACEstimator->getCtx() = m_CurrCtx->start;
+  setCtx(m_CABACEstimator, m_CurrCtx->start);
   return bestCSUpdated;
 }
 
@@ -950,7 +966,7 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
   }
 
   // set context states
-  m_CABACEstimator->getCtx() = m_CurrCtx->best;
+  setCtx(m_CABACEstimator, m_CurrCtx->best);
 
   // QP from last processed CU for further processing
   //copy the qp of the last non-chroma CU
@@ -1094,7 +1110,7 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
 
   tempCS->initStructData( qp );
 
-  m_CABACEstimator->getCtx() = m_CurrCtx->start;
+  setCtx(m_CABACEstimator, m_CurrCtx->start);
 
   const TempCtx ctxStartSP( m_CtxCache, SubCtx( Ctx::SplitFlag,   m_CABACEstimator->getCtx() ) );
   const TempCtx ctxStartQt( m_CtxCache, SubCtx( Ctx::SplitQtFlag, m_CABACEstimator->getCtx() ) );
@@ -1112,11 +1128,11 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
     CHECK(bestCS->costDbOffset != 0, "error");
   const double cost   = m_pcRdCost->calcRdCost( uint64_t( m_CABACEstimator->getEstFracBits() + ( ( bestCS->fracBits ) / factor ) ), Distortion( bestCS->dist / factor ) ) + bestCS->costDbOffset / factor;
 
-  m_CABACEstimator->getCtx() = SubCtx( Ctx::SplitFlag,   ctxStartSP );
-  m_CABACEstimator->getCtx() = SubCtx( Ctx::SplitQtFlag, ctxStartQt );
-  m_CABACEstimator->getCtx() = SubCtx( Ctx::SplitHvFlag, ctxStartHv );
-  m_CABACEstimator->getCtx() = SubCtx( Ctx::Split12Flag, ctxStart12 );
-  m_CABACEstimator->getCtx() = SubCtx( Ctx::ModeConsFlag, ctxStartMC );
+  setCtx(m_CABACEstimator, SubCtx( Ctx::SplitFlag,   ctxStartSP ));
+  setCtx(m_CABACEstimator, SubCtx( Ctx::SplitQtFlag, ctxStartQt ));
+  setCtx(m_CABACEstimator, SubCtx( Ctx::SplitHvFlag, ctxStartHv ));
+  setCtx(m_CABACEstimator, SubCtx( Ctx::Split12Flag, ctxStart12 ));
+  setCtx(m_CABACEstimator, SubCtx( Ctx::ModeConsFlag, ctxStartMC ));
   if (cost > bestCS->cost + bestCS->costDbOffset
 #if ENABLE_QPA_SUB_CTU
     || (m_pcEncCfg->getUsePerceptQPA() && !m_pcEncCfg->getUseRateCtrl() && pps.getUseDQP() && (slice.getCuQpDeltaSubdiv() > 0) && (split == CU_HORZ_SPLIT || split == CU_VERT_SPLIT) &&
@@ -1887,7 +1903,7 @@ void EncCu::xCheckPLT(CodingStructure *&tempCS, CodingStructure *&bestCS, Partit
   }
 
 
-  m_CABACEstimator->getCtx() = m_CurrCtx->start;
+  setCtx(m_CABACEstimator, m_CurrCtx->start);
   m_CABACEstimator->resetBits();
   if ((!cu.cs->slice->isIntra() || cu.cs->slice->getSPS()->getIBCFlag())
     && cu.Y().valid())
@@ -1995,7 +2011,7 @@ void EncCu::xCheckDQP( CodingStructure& cs, Partitioner& partitioner, bool bKeep
 
     if (!bKeepCtx)
     {
-      m_CABACEstimator->getCtx() = SubCtx(Ctx::DeltaQP, ctxTemp);
+      setCtx(m_CABACEstimator, SubCtx(Ctx::DeltaQP, ctxTemp));
     }
 
     // NOTE: reset QPs for CUs without residuals up to first coded CU
@@ -2065,8 +2081,8 @@ void EncCu::xCheckChromaQPOffset( CodingStructure& cs, Partitioner& partitioner 
       m_CABACEstimator->cu_chroma_qp_offset( *cu );
       cs.fracBits += m_CABACEstimator->getEstFracBits();
       cs.cost      = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);
-      m_CABACEstimator->getCtx() = SubCtx( Ctx::ChromaQpAdjFlag, ctxTempAdjFlag );
-      m_CABACEstimator->getCtx() = SubCtx( Ctx::ChromaQpAdjIdc,  ctxTempAdjIdc  );
+      setCtx(m_CABACEstimator, SubCtx( Ctx::ChromaQpAdjFlag, ctxTempAdjFlag ));
+      setCtx(m_CABACEstimator, SubCtx( Ctx::ChromaQpAdjIdc,  ctxTempAdjIdc  ));
       break;
     }
     else
@@ -2321,7 +2337,7 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         }
 
         Distortion uiSad = distParam.distFunc(distParam);
-        m_CABACEstimator->getCtx() = ctxStart;
+        setCtx(m_CABACEstimator, ctxStart);
         uint64_t fracBits = m_pcInterSearch->xCalcPuMeBits(pu);
         double cost = (double)uiSad + (double)fracBits * sqrtLambdaForFirstPassIntra;
         insertPos = -1;
@@ -2429,7 +2445,7 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           {
             pu.cs->getPredBuf(pu).Y().rspSignal(m_pcReshape->getFwdLUT());
           }
-          m_CABACEstimator->getCtx() = ctxStart;
+          setCtx(m_CABACEstimator, ctxStart);
           pu.regularMergeFlag = false;
           uint64_t fracBits = m_pcInterSearch->xCalcPuMeBits(pu);
           double cost = (double)sadValue + (double)fracBits * sqrtLambdaForFirstPassIntra;
@@ -2518,7 +2534,7 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           pu.mvRefine = false;
           Distortion uiSad = distParam.distFunc(distParam);
 
-          m_CABACEstimator->getCtx() = ctxStart;
+          setCtx(m_CABACEstimator, ctxStart);
           uint64_t fracBits = m_pcInterSearch->xCalcPuMeBits(pu);
           double cost = (double)uiSad + (double)fracBits * sqrtLambdaForFirstPassIntra;
           insertPos = -1;
@@ -2597,7 +2613,7 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       }
 
       tempCS->initStructData( encTestMode.qp );
-      m_CABACEstimator->getCtx() = ctxStart;
+      setCtx(m_CABACEstimator, ctxStart);
     }
     else
     {
@@ -3888,7 +3904,7 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
 #endif
             //  MC
             m_pcInterSearch->motionCompensation(pu,REF_PIC_LIST_0, true, chroma);
-            m_CABACEstimator->getCtx() = m_CurrCtx->start;
+            setCtx(m_CABACEstimator, m_CurrCtx->start);
 
 #if GDR_ENABLED
             if (isEncodeGdrClean)
@@ -5209,7 +5225,7 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
       }
     }
 
-    m_CABACEstimator->getCtx() = m_CurrCtx->start;
+    setCtx(m_CABACEstimator, m_CurrCtx->start);
     m_CABACEstimator->resetBits();
 
     CUCtx cuCtx;

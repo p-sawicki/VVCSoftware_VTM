@@ -50,6 +50,10 @@
 #include <assert.h>
 #include <cassert>
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "common_def.hpp"
+#endif
+
 // clang-format off
 
 //########### place macros to be removed in next cycle below this line ###############
@@ -885,6 +889,27 @@ struct SAOOffset
   ~SAOOffset();
   void reset();
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::SAOOffset() const
+  {
+    EntropyCoding::SAOOffset result;
+    result.modeIdc     = static_cast<EntropyCoding::SAOMode>(modeIdc);
+    result.typeIdc     = typeIdc;
+    result.typeAuxInfo = typeAuxInfo;
+    EntropyCoding::copy_array(offset, result.offset);
+    return result;
+  }
+
+  const SAOOffset &operator=(const EntropyCoding::SAOOffset &rhs)
+  {
+    modeIdc     = static_cast<SAOMode>(rhs.modeIdc);
+    typeIdc     = rhs.typeIdc;
+    typeAuxInfo = rhs.typeAuxInfo;
+    std::copy(rhs.offset.begin(), rhs.offset.end(), offset);
+    return *this;
+  }
+#endif
+
   const SAOOffset& operator= (const SAOOffset& src);
 };
 
@@ -897,6 +922,22 @@ struct SAOBlkParam
   const SAOBlkParam& operator= (const SAOBlkParam& src);
   SAOOffset& operator[](int compIdx){ return offsetParam[compIdx];}
   const SAOOffset& operator[](int compIdx) const { return offsetParam[compIdx];}
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::SAOBlkParam() const
+  {
+    EntropyCoding::SAOBlkParam result;
+    EntropyCoding::copy_array(offsetParam, result.offsetParam);
+    return result;
+  }
+
+  const SAOBlkParam &operator=(const EntropyCoding::SAOBlkParam &rhs)
+  {
+    std::copy(rhs.offsetParam.begin(), rhs.offsetParam.end(), offsetParam);
+    return *this;
+  }
+#endif
+
 private:
   SAOOffset offsetParam[MAX_NUM_COMPONENT];
 
@@ -907,6 +948,21 @@ private:
 struct BitDepths
 {
   int recon[MAX_NUM_CHANNEL_TYPE]; ///< the bit depth as indicated in the SPS
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::BitDepths() const
+  {
+    EntropyCoding::BitDepths result;
+    std::copy(recon, recon + MAX_NUM_CHANNEL_TYPE, result.recon.begin());
+    return result;
+  }
+
+  const BitDepths &operator=(const EntropyCoding::BitDepths &rhs)
+  {
+    std::copy(rhs.recon.begin(), rhs.recon.end(), recon);
+    return *this;
+  }
+#endif
 };
 
 enum PLTRunMode
@@ -1092,6 +1148,7 @@ private:
 };
 
 // if a check fails with THROW or CHECK, please check if ported correctly from assert in revision 1196)
+#ifndef STANDALONE_ENTROPY_CODEC
 #define THROW(x)            throw( Exception( "\nERROR: In function \"" ) << __FUNCTION__ << "\" in " << __FILE__ << ":" << __LINE__ << ": " << x )
 #define CHECK(c,x)          if(c){ THROW(x); }
 #define EXIT(x)             throw( Exception( "\n" ) << x << "\n" )
@@ -1108,6 +1165,7 @@ private:
 #else
 #define CHECKD(c,x)
 #endif // _DEBUG
+#endif
 
 // ---------------------------------------------------------------------------
 // static vector
@@ -1147,6 +1205,21 @@ public:
 
     CHECKD( _size > N, "capacity exceeded" );
   }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  template<typename CastT> operator EntropyCoding::static_vector<CastT, N>() const
+  {
+    return EntropyCoding::static_vector<CastT, N>(begin(), end());
+  }
+
+  template<typename CastT> const static_vector<T, N> &operator=(const EntropyCoding::static_vector<CastT, N> &rhs)
+  {
+    std::copy(rhs.data(), rhs.data() + rhs.size(), _arr);
+    _size = rhs.size();
+    return *this;
+  }
+#endif
+
   static_vector& operator=( std::initializer_list<T> _il )
   {
     _size = 0;
@@ -1237,6 +1310,22 @@ class dynamic_cache
   std::vector<T*> m_cache;
 
 public:
+#ifdef STANDALONE_ENTROPY_CODEC
+  template<typename CastT> operator EntropyCoding::dynamic_cache<CastT>() const
+  {
+    EntropyCoding::dynamic_cache<CastT> result;
+    std::for_each(m_cache.begin(), m_cache.end(), [&](T *elem) { result.cache(new CastT(*elem)); });
+    return result;
+  }
+
+  template<typename CastT> const dynamic_cache<T> &operator=(const EntropyCoding::dynamic_cache<CastT> &rhs)
+  {
+    deleteEntries();
+    std::for_each(rhs.m_cache.begin(), rhs.m_cache.end(), [&](CastT *elem) { cache(new T(*elem)); });
+    return *this;
+  }
+#endif
+
   ~dynamic_cache()
   {
     deleteEntries();

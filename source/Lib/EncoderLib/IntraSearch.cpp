@@ -52,6 +52,25 @@
  //! \ingroup EncoderLib
  //! \{
 #define PLTCtx(c) SubCtx( Ctx::Palette, c )
+
+inline void setCtx(CABACWriter *writer, const Ctx &ctx)
+{
+#ifdef STANDALONE_ENTROPY_CODEC
+  writer->setCtx(ctx);
+#else
+  writer->getCtx() = ctx;
+#endif
+}
+
+inline void setCtx(CABACWriter *writer, SubCtx &&ctx)
+{
+#ifdef STANDALONE_ENTROPY_CODEC
+  writer->setCtx(Ctx::fromSubCtx(ctx));
+#else
+  writer->getCtx() = std::move(ctx);
+#endif
+}
+
 IntraSearch::IntraSearch()
   : m_pSplitCS      (nullptr)
   , m_pFullCS       (nullptr)
@@ -730,11 +749,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
               minSadHad += std::min(distParamSad.distFunc(distParamSad) * 2, distParamHad.distFunc(distParamHad));
 
               // NB xFracModeBitsIntra will not affect the mode for chroma that may have already been pre-estimated.
-              m_CABACEstimator->getCtx() = SubCtx( Ctx::MipFlag, ctxStartMipFlag );
-              m_CABACEstimator->getCtx() = SubCtx( Ctx::ISPMode, ctxStartIspMode );
-              m_CABACEstimator->getCtx() = SubCtx(Ctx::IntraLumaPlanarFlag, ctxStartPlanarFlag);
-              m_CABACEstimator->getCtx() = SubCtx(Ctx::IntraLumaMpmFlag, ctxStartIntraMode);
-              m_CABACEstimator->getCtx() = SubCtx( Ctx::MultiRefLineIdx, ctxStartMrlIdx );
+              setCtx(m_CABACEstimator, SubCtx( Ctx::MipFlag, ctxStartMipFlag ));
+              setCtx(m_CABACEstimator, SubCtx( Ctx::ISPMode, ctxStartIspMode ));
+              setCtx(m_CABACEstimator, SubCtx(Ctx::IntraLumaPlanarFlag, ctxStartPlanarFlag));
+              setCtx(m_CABACEstimator, SubCtx(Ctx::IntraLumaMpmFlag, ctxStartIntraMode));
+              setCtx(m_CABACEstimator, SubCtx( Ctx::MultiRefLineIdx, ctxStartMrlIdx ));
 
               uint64_t fracModeBits = xFracModeBitsIntra(pu, mode, CHANNEL_TYPE_LUMA);
 
@@ -828,11 +847,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
 
                     // NB xFracModeBitsIntra will not affect the mode for chroma that may have already been
                     // pre-estimated.
-                    m_CABACEstimator->getCtx() = SubCtx(Ctx::MipFlag, ctxStartMipFlag);
-                    m_CABACEstimator->getCtx() = SubCtx(Ctx::ISPMode, ctxStartIspMode);
-                    m_CABACEstimator->getCtx() = SubCtx(Ctx::IntraLumaPlanarFlag, ctxStartPlanarFlag);
-                    m_CABACEstimator->getCtx() = SubCtx(Ctx::IntraLumaMpmFlag, ctxStartIntraMode);
-                    m_CABACEstimator->getCtx() = SubCtx(Ctx::MultiRefLineIdx, ctxStartMrlIdx);
+                    setCtx(m_CABACEstimator, SubCtx(Ctx::MipFlag, ctxStartMipFlag));
+                    setCtx(m_CABACEstimator, SubCtx(Ctx::ISPMode, ctxStartIspMode));
+                    setCtx(m_CABACEstimator, SubCtx(Ctx::IntraLumaPlanarFlag, ctxStartPlanarFlag));
+                    setCtx(m_CABACEstimator, SubCtx(Ctx::IntraLumaMpmFlag, ctxStartIntraMode));
+                    setCtx(m_CABACEstimator, SubCtx(Ctx::MultiRefLineIdx, ctxStartMrlIdx));
 
                     uint64_t fracModeBits = xFracModeBitsIntra(pu, mode, CHANNEL_TYPE_LUMA);
 
@@ -900,11 +919,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                     std::min(distParamSad.distFunc(distParamSad) * 2, distParamHad.distFunc(distParamHad));
 
                   // NB xFracModeBitsIntra will not affect the mode for chroma that may have already been pre-estimated.
-                  m_CABACEstimator->getCtx() = SubCtx(Ctx::MipFlag, ctxStartMipFlag);
-                  m_CABACEstimator->getCtx() = SubCtx(Ctx::ISPMode, ctxStartIspMode);
-                  m_CABACEstimator->getCtx() = SubCtx(Ctx::IntraLumaPlanarFlag, ctxStartPlanarFlag);
-                  m_CABACEstimator->getCtx() = SubCtx(Ctx::IntraLumaMpmFlag, ctxStartIntraMode);
-                  m_CABACEstimator->getCtx() = SubCtx(Ctx::MultiRefLineIdx, ctxStartMrlIdx);
+                  setCtx(m_CABACEstimator, SubCtx(Ctx::MipFlag, ctxStartMipFlag));
+                  setCtx(m_CABACEstimator, SubCtx(Ctx::ISPMode, ctxStartIspMode));
+                  setCtx(m_CABACEstimator, SubCtx(Ctx::IntraLumaPlanarFlag, ctxStartPlanarFlag));
+                  setCtx(m_CABACEstimator, SubCtx(Ctx::IntraLumaMpmFlag, ctxStartIntraMode));
+                  setCtx(m_CABACEstimator, SubCtx(Ctx::MultiRefLineIdx, ctxStartMrlIdx));
 
                   uint64_t fracModeBits = xFracModeBitsIntra(pu, mode, CHANNEL_TYPE_LUMA);
 
@@ -1004,7 +1023,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
                 Distortion minSadHad =
                   std::min(distParamSad.distFunc(distParamSad) * 2, distParamHad.distFunc(distParamHad));
 
-                m_CABACEstimator->getCtx() = SubCtx(Ctx::MipFlag, ctxStartMipFlag);
+                setCtx(m_CABACEstimator, SubCtx(Ctx::MipFlag, ctxStartMipFlag));
 
                 uint64_t fracModeBits = xFracModeBitsIntra(pu, mode, CHANNEL_TYPE_LUMA);
 
@@ -1239,11 +1258,11 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
           cs.interHad = 0;
 
           //===== reset context models =====
-          m_CABACEstimator->getCtx() = SubCtx(Ctx::MipFlag, ctxStartMipFlag);
-          m_CABACEstimator->getCtx() = SubCtx(Ctx::ISPMode, ctxStartIspMode);
-          m_CABACEstimator->getCtx() = SubCtx(Ctx::IntraLumaPlanarFlag, ctxStartPlanarFlag);
-          m_CABACEstimator->getCtx() = SubCtx(Ctx::IntraLumaMpmFlag, ctxStartIntraMode);
-          m_CABACEstimator->getCtx() = SubCtx(Ctx::MultiRefLineIdx, ctxStartMrlIdx);
+          setCtx(m_CABACEstimator, SubCtx(Ctx::MipFlag, ctxStartMipFlag));
+          setCtx(m_CABACEstimator, SubCtx(Ctx::ISPMode, ctxStartIspMode));
+          setCtx(m_CABACEstimator, SubCtx(Ctx::IntraLumaPlanarFlag, ctxStartPlanarFlag));
+          setCtx(m_CABACEstimator, SubCtx(Ctx::IntraLumaMpmFlag, ctxStartIntraMode));
+          setCtx(m_CABACEstimator, SubCtx(Ctx::MultiRefLineIdx, ctxStartMrlIdx));
 
           return false;
         }
@@ -1355,7 +1374,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
       pu.intraDir[CHANNEL_TYPE_CHROMA] = cu.colorTransform ? DM_CHROMA_IDX : pu.intraDir[CHANNEL_TYPE_CHROMA];
 
       // set context models
-      m_CABACEstimator->getCtx() = ctxStart;
+      setCtx(m_CABACEstimator, ctxStart);
 
       // determine residual for partition
       cs.initSubStructure( *csTemp, partitioner.chType, cs.area, true );
@@ -1515,7 +1534,7 @@ bool IntraSearch::estIntraPredLumaQT(CodingUnit &cu, Partitioner &partitioner, c
   }
 
   //===== reset context models =====
-  m_CABACEstimator->getCtx() = ctxStart;
+  setCtx(m_CABACEstimator, ctxStart);
 
   return validReturn;
 }
@@ -1743,7 +1762,7 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
         cs.setDecomp( pu.Cb(), false );
         cs.dist = baseDist;
         //----- restore context models -----
-        m_CABACEstimator->getCtx() = ctxStart;
+        setCtx(m_CABACEstimator, ctxStart);
 
         //----- chroma coding -----
         pu.intraDir[1] = chromaIntraMode;
@@ -1756,7 +1775,7 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
 
         if (cs.sps->getTransformSkipEnabledFlag())
         {
-          m_CABACEstimator->getCtx() = ctxStart;
+          setCtx(m_CABACEstimator, ctxStart);
         }
 
         uint64_t fracBits   = xGetIntraFracBitsQT( cs, partitioner, false, true, -1, ispType );
@@ -1833,7 +1852,7 @@ void IntraSearch::estIntraPredChromaQT( CodingUnit &cu, Partitioner &partitioner
   }
 
   //----- restore context models -----
-  m_CABACEstimator->getCtx() = ctxStart;
+  setCtx(m_CABACEstimator, ctxStart);
   if( lumaUsesISP && bestCostSoFar >= maxCostAllowed )
   {
     cu.ispMode = 0;
@@ -4070,7 +4089,7 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
 
       if ((modeId != firstCheckId) && isNotOnlyOneMode)
       {
-        m_CABACEstimator->getCtx() = ctxStart;
+        setCtx(m_CABACEstimator, ctxStart);
       }
 
       int default0Save1Load2 = 0;
@@ -4269,7 +4288,7 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
 
         if( !bCheckSplit )
         {
-          m_CABACEstimator->getCtx() = ctxBest;
+          setCtx(m_CABACEstimator, ctxBest);
         }
       }
       else if( bCheckSplit )
@@ -4289,7 +4308,7 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
     //----- store full entropy coding status, load original entropy coding status -----
     if( bCheckFull )
     {
-      m_CABACEstimator->getCtx() = ctxStart;
+      setCtx(m_CABACEstimator, ctxStart);
     }
     //----- code splitted block -----
     csSplit->cost = 0;
@@ -4329,7 +4348,7 @@ bool IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
       }
 
       //----- restore context states -----
-      m_CABACEstimator->getCtx() = ctxStart;
+      setCtx(m_CABACEstimator, ctxStart);
 
       cuCtx.violatesLfnstConstrained[CHANNEL_TYPE_LUMA] = false;
       cuCtx.violatesLfnstConstrained[CHANNEL_TYPE_CHROMA] = false;
@@ -4549,7 +4568,7 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
       uint8_t transformIndex = modeId;
       csFull->getResiBuf(tu.Y()).copyFrom(csFull->getOrgResiBuf(tu.Y()));
 
-      m_CABACEstimator->getCtx() = ctxStart;
+      setCtx(m_CABACEstimator, ctxStart);
       m_CABACEstimator->resetBits();
 
       if (sps.getUseLFNST())
@@ -4739,7 +4758,7 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
     {
       csFull->getResiBuf(tu.Y()).copyFrom(saveLumaCS.getResiBuf(tu.Y()));
       tu.copyComponentFrom(*tmpTU, COMPONENT_Y);
-      m_CABACEstimator->getCtx() = ctxBest;
+      setCtx(m_CABACEstimator, ctxBest);
     }
 
     // 3 chroma residual optimization
@@ -4829,7 +4848,7 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
 
         if (modeId > 0)
         {
-          m_CABACEstimator->getCtx() = ctxBegin;
+          setCtx(m_CABACEstimator, ctxBegin);
         }
 
         tu.mtsIdx[compID] = trModes[modeId].first;
@@ -4865,7 +4884,7 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
       {
         csFull->getResiBuf(tu.blocks[compID]).copyFrom(saveChromaCS.getResiBuf(tu.blocks[compID]));
         tu.copyComponentFrom(*tmpTU, compID);
-        m_CABACEstimator->getCtx() = ctxBest;
+        setCtx(m_CABACEstimator, ctxBest);
       }
       if (m_pcEncCfg->getCostMode() != COST_LOSSLESS_CODING || !slice.isLossless())
       {
@@ -4918,7 +4937,7 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
       }
     }
 
-    m_CABACEstimator->getCtx() = ctxStart;
+    setCtx(m_CABACEstimator, ctxStart);
     uint64_t totalBits = xGetIntraFracBitsQT(*csFull, partitioner, true, true, -1, TU_NO_ISP);
     double   totalCost = m_pcRdCost->calcRdCost(totalBits, totalDist);
 
@@ -4972,7 +4991,7 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
         Distortion distTmp = 0;
         tu.mtsIdx[codeCompId] = trModes[modeId].first;
         tu.mtsIdx[otherCompId] = MTS_DCT2_DCT2;
-        m_CABACEstimator->getCtx() = ctxStart;
+        setCtx(m_CABACEstimator, ctxStart);
         csFull->getResiBuf(cbArea).copyFrom(orgResiCb[cbfMask]);
         csFull->getResiBuf(crArea).copyFrom(orgResiCr[cbfMask]);
         if (nNumTransformCands > 1)
@@ -5073,7 +5092,7 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
       tu.copyComponentFrom(*tmpTU, COMPONENT_Cb);
       tu.copyComponentFrom(*tmpTU, COMPONENT_Cr);
 
-      m_CABACEstimator->getCtx() = ctxBest;
+      setCtx(m_CABACEstimator, ctxBest);
     }
     tu.jointCbCr = bestJointCbCr;
     csFull->picture->getRecoBuf(tu).copyFrom(csFull->getRecoBuf(tu));
@@ -5129,7 +5148,7 @@ bool IntraSearch::xRecurIntraCodingACTQT(CodingStructure &cs, Partitioner &parti
         TU::setCbfAtDepth(currTU, COMPONENT_Cr, currDepth, compCbf[COMPONENT_Cr]);
       }
 
-      m_CABACEstimator->getCtx() = ctxStart;
+      setCtx(m_CABACEstimator, ctxStart);
       csSplit->fracBits = xGetIntraFracBitsQT(*csSplit, partitioner, true, true, -1, TU_NO_ISP);
       csSplit->cost = m_pcRdCost->calcRdCost(csSplit->fracBits, csSplit->dist);
 
@@ -5352,7 +5371,7 @@ ChromaCbfs IntraSearch::xRecurIntraChromaCodingQT( CodingStructure &cs, Partitio
 
         if (!isFirstMode)   // if not first mode to be tested
         {
-          m_CABACEstimator->getCtx() = ctxStart;
+          setCtx(m_CABACEstimator, ctxStart);
         }
 
         singleDistCTmp = 0;
@@ -5387,7 +5406,7 @@ ChromaCbfs IntraSearch::xRecurIntraChromaCodingQT( CodingStructure &cs, Partitio
           singleCostTmp        = m_pcRdCost->calcRdCost(fracBitsTmp, singleDistCTmp);
           if (isOneMode || (!isOneMode && !isLastMode))
           {
-            m_CABACEstimator->getCtx() = ctxStart;
+            setCtx(m_CABACEstimator, ctxStart);
           }
         }
         else if (!isOneMode)
@@ -5441,7 +5460,7 @@ ChromaCbfs IntraSearch::xRecurIntraChromaCodingQT( CodingStructure &cs, Partitio
       {
         //Luma + Cb cost is already larger than the best cost, so we don't need to test Cr
         cs.dist = MAX_UINT;
-        m_CABACEstimator->getCtx() = ctxStart;
+        setCtx(m_CABACEstimator, ctxStart);
         earlyExitISP               = true;
         break;
         //return cbfs;
@@ -5450,7 +5469,7 @@ ChromaCbfs IntraSearch::xRecurIntraChromaCodingQT( CodingStructure &cs, Partitio
       // Done with one component of separate coding of Cr and Cb, just switch to the best Cb contexts if Cr coding is still to be done
       if ((c == COMPONENT_Cb && bestModeId < totalModesToTest) || (c == COMPONENT_Cb && m_pcEncCfg->getCostMode() == COST_LOSSLESS_CODING && slice.isLossless()))
       {
-        m_CABACEstimator->getCtx() = ctxBest;
+        setCtx(m_CABACEstimator, ctxBest);
 
         currTU.copyComponentFrom(tmpTU, COMPONENT_Cb); // Cbf of Cb is needed to estimate cost for Cr Cbf
       }
@@ -5516,7 +5535,7 @@ ChromaCbfs IntraSearch::xRecurIntraChromaCodingQT( CodingStructure &cs, Partitio
           Distortion distTmp = 0;
           currTU.mtsIdx[codeCompId] = currTU.cu->bdpcmModeChroma ? MTS_SKIP : trModes[modeId].first;
           currTU.mtsIdx[otherCompId] = MTS_DCT2_DCT2;
-          m_CABACEstimator->getCtx() = ctxStartTU;
+          setCtx(m_CABACEstimator, ctxStartTU);
 
           resiCb.copyFrom(orgResiCb[cbfMask]);
           resiCr.copyFrom(orgResiCr[cbfMask]);
@@ -5596,7 +5615,7 @@ ChromaCbfs IntraSearch::xRecurIntraChromaCodingQT( CodingStructure &cs, Partitio
         currTU.copyComponentFrom(tmpTU, COMPONENT_Cb);
         currTU.copyComponentFrom(tmpTU, COMPONENT_Cr);
 
-        m_CABACEstimator->getCtx() = ctxBest;
+        setCtx(m_CABACEstimator, ctxBest);
       }
 
       // Copy results to the picture structures

@@ -202,7 +202,11 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream, int deb
       if( cs.getCURestricted( pos.offset(0, -1), pos, slice->getIndependentSliceIdx(), tileIdx, CH_L ) )
       {
         // Top is available, so use it.
+#ifdef STANDALONE_ENTROPY_CODEC
+        cabacReader.setCtx(m_entropyCodingSyncContextState);
+#else
         cabacReader.getCtx() = m_entropyCodingSyncContextState;
+#endif
         cs.setPrevPLT(m_palettePredictorSyncState);
       }
       pic->m_prevQP[0] = pic->m_prevQP[1] = slice->getSliceQp();

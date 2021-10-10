@@ -41,6 +41,10 @@
 #include <vector>
 #include "CommonDef.h"
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "alf_parameters.hpp"
+#endif
+
 //! \ingroup AlfParameters
 //! \{
 
@@ -144,6 +148,23 @@ struct AlfParam
   {
     reset();
   }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::AlfParam() const
+  {
+    EntropyCoding::AlfParam result;
+    std::copy(enabledFlag, enabledFlag + MAX_NUM_COMPONENT, result.enabledFlag.begin());
+    result.numAlternativesChroma = numAlternativesChroma;
+    return result;
+  }
+
+  const AlfParam &operator=(const EntropyCoding::AlfParam &rhs)
+  {
+    std::copy(rhs.enabledFlag.begin(), rhs.enabledFlag.end(), enabledFlag);
+    numAlternativesChroma = rhs.numAlternativesChroma;
+    return *this;
+  }
+#endif
 
   void reset()
   {
@@ -251,6 +272,17 @@ struct CcAlfFilterParam
   {
     reset();
   }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::CcAlfFilterParam() const
+  {
+    EntropyCoding::CcAlfFilterParam result;
+    std::copy(ccAlfFilterEnabled, ccAlfFilterEnabled + 2, result.ccAlfFilterEnabled.begin());
+    std::copy(ccAlfFilterCount, ccAlfFilterCount + 2, result.ccAlfFilterCount.begin());
+    return result;
+  }
+#endif
+
   void reset()
   {
     std::memset( ccAlfFilterEnabled, false, sizeof( ccAlfFilterEnabled ) );

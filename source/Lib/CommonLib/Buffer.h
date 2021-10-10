@@ -47,6 +47,10 @@
 #include <type_traits>
 #include <typeinfo>
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "buffer.hpp"
+#endif
+
 // ---------------------------------------------------------------------------
 // AreaBuf struct
 // ---------------------------------------------------------------------------
@@ -103,6 +107,13 @@ struct AreaBuf : public Size
   AreaBuf( T *_buf, const int &_stride, const Size &size )                                : Size( size ),            buf( _buf ), stride( _stride )    { }
   AreaBuf( T *_buf, const SizeType &_width, const SizeType &_height )                     : Size( _width, _height ), buf( _buf ), stride( _width )     { }
   AreaBuf( T *_buf, const int &_stride, const SizeType &_width, const SizeType &_height ) : Size( _width, _height ), buf( _buf ), stride( _stride )    { }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  template<typename CastT> operator EntropyCoding::AreaBuf<CastT>() const
+  {
+    return EntropyCoding::AreaBuf<CastT>(buf, stride, width, height);
+  }
+#endif
 
   operator AreaBuf<const T>() const { return AreaBuf<const T>( buf, stride, width, height ); }
 
@@ -175,6 +186,7 @@ typedef AreaBuf<const TCoeff> CPLTescapeBuf;
 typedef AreaBuf<      bool>  PLTtypeBuf;
 typedef AreaBuf<const bool> CPLTtypeBuf;
 
+#ifndef STANDALONE_ENTROPY_CODEC
 #define SIZE_AWARE_PER_EL_OP( OP, INC )                     \
 if( ( width & 7 ) == 0 )                                    \
 {                                                           \
@@ -235,6 +247,7 @@ else                                                        \
     INC;                                                    \
   }                                                         \
 }
+#endif
 
 template<typename T>
 void AreaBuf<T>::fill(const T &val)

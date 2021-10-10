@@ -44,18 +44,64 @@
 #include "CommonLib/MotionInfo.h"
 #include "CommonLib/UnitPartitioner.h"
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "cabac_reader.hpp"
+#endif
 
 class CABACReader
 {
 public:
-  CABACReader(BinDecoderBase& binDecoder) : m_BinDecoder(binDecoder), m_Bitstream(0) {}
+  CABACReader(BinDecoderBase &binDecoder
+#ifdef STANDALONE_ENTROPY_CODEC
+              ,
+              EntropyCoding::BinDecoderBase &entropyCodingBinDecoder
+#endif
+              )
+    : m_BinDecoder(binDecoder)
+    , m_Bitstream(0)
+#ifdef STANDALONE_ENTROPY_CODEC
+    , m_cabacReader(entropyCodingBinDecoder)
+#endif
+  {
+  }
   virtual ~CABACReader() {}
 
 public:
   void        initCtxModels             ( Slice&                        slice );
-  void        initBitstream             ( InputBitstream*               bitstream )           { m_Bitstream = bitstream; m_BinDecoder.init( m_Bitstream ); }
-  const Ctx&  getCtx                    ()                                            const   { return m_BinDecoder.getCtx();  }
-  Ctx&        getCtx                    ()                                                    { return m_BinDecoder.getCtx();  }
+  void        initBitstream(InputBitstream *bitstream)
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    if (m_entropyCodingBitstream)
+    {
+      delete m_entropyCodingBitstream;
+    }
+    m_entropyCodingBitstream = new EntropyCoding::InputBitstream(*bitstream);
+    m_cabacReader.initBitstream(m_entropyCodingBitstream);
+#else
+    m_Bitstream = bitstream;
+    m_BinDecoder.init(m_Bitstream);
+#endif
+  }
+
+  const Ctx &getCtx() const
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    m_referenceCtx = m_cabacReader.getCtx();
+    return m_referenceCtx;
+#else
+    return m_BinDecoder.getCtx();
+#endif
+  }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  void setCtx(const Ctx &ctx)
+  {
+    m_ctx                  = ctx;
+    m_cabacReader.getCtx() = m_ctx;
+  }
+#else
+  Ctx &getCtx() { return m_BinDecoder.getCtx(); }
+#endif
 
 public:
   // slice segment data (clause 7.3.8.1)
@@ -158,6 +204,13 @@ private:
   BinDecoderBase& m_BinDecoder;
   InputBitstream* m_Bitstream;
   ScanElement*    m_scanOrder;
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  mutable Ctx                    m_referenceCtx;
+  EntropyCoding::Ctx             m_ctx;
+  EntropyCoding::CABACReader     m_cabacReader;
+  EntropyCoding::InputBitstream *m_entropyCodingBitstream;
+#endif
 };
 
 
@@ -165,8 +218,13 @@ class CABACDecoder
 {
 public:
   CABACDecoder()
-    : m_CABACReaderStd  ( m_BinDecoderStd )
-    , m_CABACReader     { &m_CABACReaderStd }
+    : m_CABACReaderStd(m_BinDecoderStd
+#ifdef STANDALONE_ENTROPY_CODEC
+                       ,
+                       m_entropyCodingBinDecoderStd
+#endif
+                       )
+    , m_CABACReader{ &m_CABACReaderStd }
   {}
 
   CABACReader*                getCABACReader    ( int           id    )       { return m_CABACReader[id]; }
@@ -175,6 +233,9 @@ private:
   BinDecoder_Std          m_BinDecoderStd;
   CABACReader             m_CABACReaderStd;
   CABACReader*            m_CABACReader[BPM_NUM-1];
+#ifdef STANDALONE_ENTROPY_CODEC
+  EntropyCoding::BinDecoder_Std m_entropyCodingBinDecoderStd;
+#endif
 };
 
 #endif

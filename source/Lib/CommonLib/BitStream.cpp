@@ -41,7 +41,7 @@
 #include <string.h>
 #include <memory.h>
 
-#include "log.h"
+#include "log.hpp"
 
 using namespace std;
 
@@ -141,7 +141,7 @@ void OutputBitstream::write   ( uint32_t uiBits, uint32_t uiNumberOfBits )
   uint32_t topword = (uiNumberOfBits - next_num_held_bits) & ~((1 << 3) -1);
   uint32_t write_bits = (m_held_bits << topword) | (uiBits >> next_num_held_bits);
 
-  bitLogger.LogBits(write_bits);
+  EntropyCoding::bitLogger.LogBits(write_bits);
 
   switch (num_total_bits >> 3)
   {

@@ -44,7 +44,7 @@
 #include "CommonLib/dtrace_blockstatistics.h"
 #endif
 
-#include "log.h"
+#include "log.hpp"
 
 #include <math.h>
 
@@ -1777,7 +1777,11 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       if( cs.getCURestricted( pos.offset(0, -1), pos, pcSlice->getIndependentSliceIdx(), cs.pps->getTileIdx( pos ), CH_L ) )
       {
         // Top is available, we use it.
+#ifdef STANDALONE_ENTROPY_CODEC
+        pCABACWriter->setCtx(pEncLib->m_entropyCodingSyncContextState);
+#else
         pCABACWriter->getCtx() = pEncLib->m_entropyCodingSyncContextState;
+#endif
         cs.setPrevPLT(pEncLib->m_palettePredictorSyncState);
       }
       prevQP[0] = prevQP[1] = pcSlice->getSliceQp();
@@ -2057,7 +2061,11 @@ void EncSlice::encodeSlice   ( Picture* pcPic, OutputBitstream* pcSubstreams, ui
       if( cs.getCURestricted( pos.offset( 0, -1 ), pos, pcSlice->getIndependentSliceIdx(), cs.pps->getTileIdx( pos ), CH_L ) )
       {
         // Top is available, so use it.
+#ifdef STANDALONE_ENTROPY_CODEC
+        m_CABACWriter->setCtx(m_entropyCodingSyncContextState);
+#else
         m_CABACWriter->getCtx() = m_entropyCodingSyncContextState;
+#endif
         cs.setPrevPLT(m_palettePredictorSyncState);
       }
     }
@@ -2083,14 +2091,17 @@ void EncSlice::encodeSlice   ( Picture* pcPic, OutputBitstream* pcSubstreams, ui
     bool isLastCTUinWPP    = !isLastCTUsinSlice && !isLastCTUinTile && wavefrontsEnabled && cs.pps->ctuIsTileColBd( pcSlice->getCtuAddrInSlice( ctuIdx + 1 ) % cs.pps->getPicWidthInCtu() );
     if (isLastCTUsinSlice || isLastCTUinTile || isLastCTUinWPP )         // this the the last CTU of the slice, tile, or WPP
     {
-      if (isLastCTUinWPP) {
-        binLogger.LogElement(SyntaxElement::end_of_subset_one_bit);
+      if (isLastCTUinWPP)
+      {
+        EntropyCoding::binLogger.LogElement(EntropyCoding::SyntaxElement::end_of_subset_one_bit);
       }
-      if (isLastCTUinTile) {
-        binLogger.LogElement(SyntaxElement::end_of_tile_one_bit);
+      if (isLastCTUinTile)
+      {
+        EntropyCoding::binLogger.LogElement(EntropyCoding::SyntaxElement::end_of_tile_one_bit);
       }
-      if (isLastCTUsinSlice) {
-        binLogger.LogElement(SyntaxElement::end_of_slice_one_bit);
+      if (isLastCTUsinSlice)
+      {
+        EntropyCoding::binLogger.LogElement(EntropyCoding::SyntaxElement::end_of_slice_one_bit);
       }
 
       m_CABACWriter->end_of_slice();  // end_of_slice_one_bit, end_of_tile_one_bit, or end_of_subset_one_bit

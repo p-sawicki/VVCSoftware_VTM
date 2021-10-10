@@ -45,6 +45,10 @@
 #include "Slice.h"
 #include <vector>
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "coding_structure.hpp"
+#endif
+
 
 struct Picture;
 
@@ -97,6 +101,12 @@ public:
   const PreCalcValues* pcv;
 
   CodingStructure(CUCache&, PUCache&, TUCache&);
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::CodingStructure() const;
+
+  const CodingStructure &operator=(const EntropyCoding::CodingStructure &rhs);
+#endif
 
   void create(const UnitArea &_unit, const bool isTopLayer, const bool isPLTused);
   void create(const ChromaFormat &_chromaFormat, const Area& _area, const bool isTopLayer, const bool isPLTused);

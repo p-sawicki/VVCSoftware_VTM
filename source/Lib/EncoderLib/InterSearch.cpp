@@ -57,6 +57,15 @@
  //! \ingroup EncoderLib
  //! \{
 
+inline void setCtx(CABACWriter *writer, const Ctx &ctx)
+{
+#ifdef STANDALONE_ENTROPY_CODEC
+  writer->setCtx(ctx);
+#else
+  writer->getCtx() = ctx;
+#endif
+}
+
 static const Mv s_acMvRefineH[9] =
 {
   Mv(  0,  0 ), // 0
@@ -5101,8 +5110,8 @@ void InterSearch::xSetSearchRange ( const PredictionUnit& pu,
     bool isRefGdrPicture = pu.cs->slice->getRefPic(eRefPicList, iRefIdx)->cs->picHeader->getInGdrInterval();
     if (isRefGdrPicture)
     {
-      mvTL = { cFPMvPred.getHor(), cFPMvPred.getVer() };
-      mvBR = { cFPMvPred.getHor(), cFPMvPred.getVer() };
+      mvTL = Mv{ cFPMvPred.getHor(), cFPMvPred.getVer() };
+      mvBR = Mv{ cFPMvPred.getHor(), cFPMvPred.getVer() };
 
       const int lumaPixelAway = 4;
       const int chromaPixelAway = 5;
@@ -5133,8 +5142,8 @@ void InterSearch::xSetSearchRange ( const PredictionUnit& pu,
       int srTop = cFPMvPred.getVer() - (iSrchRng << iMvShift);
       int srBottom = cFPMvPred.getVer() + (iSrchRng << iMvShift);
 
-      mvTL = { srLeft, srTop };
-      mvBR = { srRight, srBottom };
+      mvTL = Mv{ srLeft, srTop };
+      mvBR = Mv{ srRight, srBottom };
     }
   }
 #endif
@@ -9723,7 +9732,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         else
           csFull->getResiBuf(compArea).copyFrom(cs.getOrgResiBuf(compArea));
 
-        m_CABACEstimator->getCtx() = ctxStart;
+        setCtx(m_CABACEstimator, ctxStart);
         m_CABACEstimator->resetBits();
 
         if (!(m_pcEncCfg->getCostMode() == COST_LOSSLESS_CODING && slice.isLossless()))
@@ -9833,7 +9842,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         {
           if (isFirstMode)
           {
-            m_CABACEstimator->getCtx() = ctxStart;
+            setCtx(m_CABACEstimator, ctxStart);
             m_CABACEstimator->resetBits();
           }
 
@@ -10056,7 +10065,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
             m_pcTrQuant->setLambda(1.05 * m_pcTrQuant->getLambda());
           }
 
-          m_CABACEstimator->getCtx() = ctxStart;
+          setCtx(m_CABACEstimator, ctxStart);
           m_CABACEstimator->resetBits();
 
           PelBuf cbResi = csFull->getResiBuf(cbArea);
@@ -10211,7 +10220,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       csFull->getResiBuf(crArea).copyFrom(saveCS.getResiBuf(crArea));
     }
 
-    m_CABACEstimator->getCtx() = ctxStart;
+    setCtx(m_CABACEstimator, ctxStart);
     m_CABACEstimator->resetBits();
     if( !tu.noResidual )
     {
@@ -10295,7 +10304,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
   {
     if( bCheckFull )
     {
-      m_CABACEstimator->getCtx() = ctxStart;
+      setCtx(m_CABACEstimator, ctxStart);
     }
 
     if( partitioner.canSplit( TU_MAX_TR_SPLIT, cs ) )
@@ -10350,7 +10359,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
         anyCbfSet |= compCbf[COMPONENT_Cr];
       }
 
-      m_CABACEstimator->getCtx() = ctxStart;
+      setCtx(m_CABACEstimator, ctxStart);
       m_CABACEstimator->resetBits();
 
       // when compID isn't a channel, code Cbfs:
@@ -10595,7 +10604,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
     cu.sbtInfo = orgSbtInfo;
 
     m_CABACEstimator->resetBits();
-    m_CABACEstimator->getCtx() = ctxStart;
+    setCtx(m_CABACEstimator, ctxStart);
     cs.clearTUs();
     cs.fracBits = 0;
     cs.dist = 0;
@@ -10716,7 +10725,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
   }
 
   // all decisions now made. Fully encode the CU, including the headers:
-  m_CABACEstimator->getCtx() = ctxStart;
+  setCtx(m_CABACEstimator, ctxStart);
 
   uint64_t finalFracBits = xGetSymbolFracBitsInter( cs, partitioner );
   // we've now encoded the CU, and so have a valid bit cost

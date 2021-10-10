@@ -51,6 +51,9 @@
 #include "SEIColourTransform.h"
 #include <deque>
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "picture.hpp"
+#endif
 
 class SEI;
 class AQpLayer;
@@ -63,6 +66,33 @@ struct Picture : public UnitArea
 {
   uint32_t margin;
   Picture();
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::Picture() const
+  {
+    EntropyCoding::Picture result;
+    for (int i = 0; i < 2; ++i)
+    {
+      std::copy(m_sao[i].begin(), m_sao[i].end(), result.m_sao[i].begin());
+    }
+    EntropyCoding::copy_array(m_alfCtuEnableFlag, result.m_alfCtuEnableFlag);
+    result.m_alfCtbFilterIndex = m_alfCtbFilterIndex;
+    EntropyCoding::copy_array(m_alfCtuAlternative, result.m_alfCtuAlternative);
+    return result;
+  }
+
+  const Picture &operator=(const EntropyCoding::Picture &rhs)
+  {
+    for (int i = 0; i < 2; ++i)
+    {
+      std::copy(rhs.m_sao[i].begin(), rhs.m_sao[i].end(), m_sao[i].begin());
+    }
+    std::copy(rhs.m_alfCtuEnableFlag.begin(), rhs.m_alfCtuEnableFlag.end(), m_alfCtuEnableFlag);
+    m_alfCtbFilterIndex = rhs.m_alfCtbFilterIndex;
+    std::copy(rhs.m_alfCtuAlternative.begin(), rhs.m_alfCtuAlternative.end(), m_alfCtuAlternative);
+    return *this;
+  }
+#endif
 
   void create( const ChromaFormat &_chromaFormat, const Size &size, const unsigned _maxCUSize, const unsigned margin, const bool bDecoder, const int layerId, const bool gopBasedTemporalFilterEnabled = false );
   void destroy();

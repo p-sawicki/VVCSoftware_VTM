@@ -40,6 +40,10 @@
 
 #include "CommonDef.h"
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "common_def.hpp"
+#endif
+
 typedef int PosType;
 typedef uint32_t SizeType;
 struct Position
@@ -49,6 +53,17 @@ struct Position
 
   Position()                                   : x(0),  y(0)  { }
   Position(const PosType _x, const PosType _y) : x(_x), y(_y) { }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::Position() const { return EntropyCoding::Position(x, y); }
+
+  const Position &operator=(const EntropyCoding::Position &rhs)
+  {
+    x = rhs.x;
+    y = rhs.y;
+    return *this;
+  }
+#endif
 
   bool operator!=(const Position &other)  const { return x != other.x || y != other.y; }
   bool operator==(const Position &other)  const { return x == other.x && y == other.y; }
@@ -68,6 +83,12 @@ struct Size
 
   Size()                                              : width(0),      height(0)       { }
   Size(const SizeType _width, const SizeType _height) : width(_width), height(_height) { }
+
+  #ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::Size() const {
+    return EntropyCoding::Size(width, height);
+  }
+  #endif
 
   bool operator!=(const Size &other)      const { return (width != other.width) || (height != other.height); }
   bool operator==(const Size &other)      const { return (width == other.width) && (height == other.height); }
@@ -135,6 +156,18 @@ struct UnitScale
   int posx;
   int posy;
   int area;
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::UnitScale() const { return EntropyCoding::UnitScale(posx, posy); }
+
+  const UnitScale &operator=(const EntropyCoding::UnitScale &rhs)
+  {
+    posx = rhs.posx;
+    posy = rhs.posy;
+    area = rhs.area;
+    return *this;
+  }
+#endif
 
   template<typename T> T scaleHor ( const T &in ) const { return in >> posx; }
   template<typename T> T scaleVer ( const T &in ) const { return in >> posy; }

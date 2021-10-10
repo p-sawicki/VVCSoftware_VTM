@@ -37,7 +37,7 @@ if( SET_ENABLE_TRACING )
 endif()
 
 target_include_directories( ${LIB_NAME} PUBLIC . )
-target_link_libraries( ${LIB_NAME} CommonLib )
+target_link_libraries( ${LIB_NAME} CommonLib LogLib)
 
 if( CMAKE_COMPILER_IS_GNUCC )
   # this is quite certainly a compiler problem

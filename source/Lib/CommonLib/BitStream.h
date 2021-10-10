@@ -47,6 +47,10 @@
 #include <stdio.h>
 #include "CommonDef.h"
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "bit_stream.hpp"
+#endif
+
 //! \ingroup CommonLib
 //! \{
 
@@ -75,6 +79,10 @@ public:
   // create / destroy
   OutputBitstream();
   ~OutputBitstream();
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::OutputBitstream() { return EntropyCoding::OutputBitstream(m_fifo); }
+#endif
 
   // interface for encoding
   /**
@@ -163,6 +171,14 @@ public:
   InputBitstream();
   virtual ~InputBitstream() { }
   InputBitstream(const InputBitstream &src);
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::InputBitstream() const
+  {
+    return EntropyCoding::InputBitstream(m_fifo, m_emulationPreventionByteLocation, m_fifo_idx, m_num_held_bits,
+                                         m_held_bits, m_numBitsRead);
+  }
+#endif
 
   void resetToStart();
 

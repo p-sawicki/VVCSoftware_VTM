@@ -43,6 +43,10 @@
 
 #include <vector>
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "contexts.hpp"
+#endif
+
 static constexpr int     PROB_BITS   = 15;   // Nominal number of bits to represent probabilities
 static constexpr int     PROB_BITS_0 = 10;   // Number of bits to represent 1st estimate
 static constexpr int     PROB_BITS_1 = 14;   // Number of bits to represent 2nd estimate
@@ -95,6 +99,17 @@ public:
     m_rate        = DWS;
   }
   ~BinProbModel_Std ()                {}
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  BinProbModel_Std(const EntropyCoding::BinProbModel_Std &rhs)
+    : m_state{ rhs.getState0(), rhs.getState1() }, m_rate(rhs.getRate())
+  {
+  }
+  operator EntropyCoding::BinProbModel_Std() const
+  {
+    return EntropyCoding::BinProbModel_Std(m_state[0], m_state[1], m_rate);
+  }
+#endif
 public:
   void            init              ( int qp, int initId );
   void update(unsigned bin)
@@ -299,6 +314,22 @@ public:
   CtxStore();
   CtxStore( bool dummy );
   CtxStore( const CtxStore<BinProbModel>& ctxStore );
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  template<typename CastT> CtxStore(const EntropyCoding::CtxStore<CastT> &rhs)
+  {
+    m_CtxBuffer.resize(rhs.getCtxBuffer().size());
+    std::copy(rhs.getCtxBuffer().begin(), rhs.getCtxBuffer().end(), m_CtxBuffer.begin());
+    m_Ctx = m_CtxBuffer.data();
+  }
+
+  template<typename CastT> operator EntropyCoding::CtxStore<CastT>() const
+  {
+    std::vector<CastT> ctxBuffer(m_CtxBuffer.size());
+    std::copy(m_CtxBuffer.begin(), m_CtxBuffer.end(), ctxBuffer.begin());
+    return EntropyCoding::CtxStore<CastT>(ctxBuffer);
+  }
+#endif
 public:
   void copyFrom   ( const CtxStore<BinProbModel>& src )                        { checkInit(); ::memcpy( m_Ctx,               src.m_Ctx,               sizeof( BinProbModel ) * ContextSetCfg::NumberOfContexts ); }
   void copyFrom   ( const CtxStore<BinProbModel>& src, const CtxSet& ctxSet )  { checkInit(); ::memcpy( m_Ctx+ctxSet.Offset, src.m_Ctx+ctxSet.Offset, sizeof( BinProbModel ) * ctxSet.Size ); }
@@ -345,8 +376,21 @@ public:
   Ctx( const BinProbModel_Std*    dummy );
   Ctx( const Ctx&                 ctx   );
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  Ctx(const EntropyCoding::Ctx &rhs)
+    : m_BPMType(static_cast<BPMType>(rhs.getBPMType()))
+    , m_CtxStore_Std(rhs.operator const EntropyCoding::CtxStore<EntropyCoding::BinProbModel_Std> &())
+  {
+  }
+
+  operator EntropyCoding::Ctx() const
+  {
+    return EntropyCoding::Ctx(static_cast<EntropyCoding::BPMType>(m_BPMType), m_CtxStore_Std);
+  }
+#endif
+
 public:
-  const Ctx& operator= ( const Ctx& ctx )
+  Ctx& operator= ( const Ctx& ctx )
   {
     m_BPMType = ctx.m_BPMType;
     switch( m_BPMType )
@@ -357,6 +401,20 @@ public:
     ::memcpy( m_GRAdaptStats, ctx.m_GRAdaptStats, sizeof( unsigned ) * RExt__GOLOMB_RICE_ADAPTATION_STATISTICS_SETS );
     return *this;
   }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  static Ctx fromSubCtx(const SubCtx &subCtx)
+  {
+    Ctx ctx;
+    ctx.m_BPMType = subCtx.m_Ctx.m_BPMType;
+    switch (ctx.m_BPMType)
+    {
+    case BPM_Std: ctx.m_CtxStore_Std.copyFrom(subCtx.m_Ctx.m_CtxStore_Std, subCtx.m_CtxSet); break;
+    default: break;
+    }
+    return ctx;
+  }
+#endif
 
   SubCtx operator= ( SubCtx&& subCtx )
   {

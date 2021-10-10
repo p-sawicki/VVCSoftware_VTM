@@ -47,6 +47,9 @@
 
 #include <bitset>
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "context_modelling.hpp"
+#endif
 
 struct CoeffCodingContext
 {
@@ -572,6 +575,27 @@ public:
                            mtsLastScanPos                                = false;
                          }
   ~CUCtx() {}
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::CUCtx() const
+  {
+    return EntropyCoding::CUCtx(isDQPCoded, isChromaQpAdjCoded, qgStart, lfnstLastScanPos, qp, violatesLfnstConstrained,
+                                violatesMtsCoeffConstraint, mtsLastScanPos);
+  }
+
+  const CUCtx &operator=(const EntropyCoding::CUCtx &rhs)
+  {
+    isDQPCoded         = rhs.isDQPCoded;
+    isChromaQpAdjCoded = rhs.isChromaQpAdjCoded;
+    qgStart            = rhs.qgStart;
+    lfnstLastScanPos   = rhs.lfnstLastScanPos;
+    qp                 = rhs.qp;
+    mtsLastScanPos     = rhs.mtsLastScanPos;
+    std::copy(rhs.violatesLfnstConstrained.begin(), rhs.violatesLfnstConstrained.end(), violatesLfnstConstrained);
+    return *this;
+  }
+#endif
+
 public:
   bool      isDQPCoded;
   bool      isChromaQpAdjCoded;

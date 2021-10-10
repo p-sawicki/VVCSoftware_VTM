@@ -105,6 +105,157 @@ CodingStructure::CodingStructure(CUCache& cuCache, PUCache& puCache, TUCache& tu
   firstColorSpaceTestOnly = false;
 }
 
+#ifdef STANDALONE_ENTROPY_CODEC
+CodingStructure::operator EntropyCoding::CodingStructure() const
+{
+  EntropyCoding::CodingStructure *_parent = nullptr;
+  if (parent)
+  {
+    _parent = new EntropyCoding::CodingStructure(*parent);
+  }
+
+  std::array<EntropyCoding::UnitScale, MAX_NUM_COMPONENT> _unitScale;
+  EntropyCoding::copy_array(unitScale, _unitScale);
+
+  const int                                    n_cus = cus.size(), n_pus = pus.size(), n_tus = tus.size();
+  std::vector<EntropyCoding::CodingUnit *>     _cus(n_cus);
+  std::vector<EntropyCoding::PredictionUnit *> _pus(n_pus);
+  std::vector<EntropyCoding::TransformUnit *>  _tus(n_tus);
+
+  std::unordered_map<CodingUnit *, EntropyCoding::CodingUnit *>         cu_map;
+  std::unordered_map<PredictionUnit *, EntropyCoding::PredictionUnit *> pu_map;
+  std::unordered_map<TransformUnit *, EntropyCoding::TransformUnit *>   tu_map;
+
+  for (int i = 0; i < n_cus; ++i)
+  {
+    _cus[i]        = new EntropyCoding::CodingUnit(*cus[i]);
+    cu_map[cus[i]] = _cus[i];
+  }
+  for (int i = 0; i < n_pus; ++i)
+  {
+    _pus[i]        = new EntropyCoding::PredictionUnit(*pus[i]);
+    pu_map[pus[i]] = _pus[i];
+  }
+  for (int i = 0; i < n_tus; ++i)
+  {
+    _tus[i]        = new EntropyCoding::TransformUnit(*tus[i]);
+    tu_map[tus[i]] = _tus[i];
+  }
+
+  for (int i = 0; i < n_cus; ++i)
+  {
+    _cus[i]->next    = cu_map[cus[i]->next];
+    _cus[i]->firstPU = pu_map[cus[i]->firstPU];
+    _cus[i]->lastPU  = pu_map[cus[i]->lastPU];
+    _cus[i]->firstTU = tu_map[cus[i]->firstTU];
+    _cus[i]->lastTU  = tu_map[cus[i]->lastTU];
+  }
+  for (int i = 0; i < n_pus; ++i)
+  {
+    _pus[i]->cu   = cu_map[pus[i]->cu];
+    _pus[i]->next = pu_map[pus[i]->next];
+  }
+  for (int i = 0; i < n_tus; ++i)
+  {
+    _tus[i]->cu   = cu_map[tus[i]->cu];
+    _tus[i]->next = tu_map[tus[i]->next];
+    _tus[i]->prev = tu_map[tus[i]->prev];
+  }
+
+  return EntropyCoding::CodingStructure(
+    area, new EntropyCoding::Picture(*picture), _parent, new EntropyCoding::Slice(*slice), std::move(_unitScale),
+    chromaQpAdj, new EntropyCoding::SPS(*sps), new EntropyCoding::PPS(*pps), new EntropyCoding::PicHeader(*picHeader),
+    new EntropyCoding::PreCalcValues(*pcv), static_cast<EntropyCoding::TreeType>(treeType),
+    static_cast<EntropyCoding::ModeType>(modeType), std::move(_cus), std::move(_pus), std::move(_tus), prevPLT,
+    m_isTuEnc, m_cuIdx, m_puIdx, m_tuIdx, m_numCUs, m_numPUs, m_numTUs, m_cuCache, m_puCache, m_tuCache, m_coeffs,
+    m_pcmbuf, m_runType, m_offsets);
+}
+
+const CodingStructure &CodingStructure::operator=(const EntropyCoding::CodingStructure &rhs)
+{
+  area        = rhs.area;
+  *picture    = *rhs.picture;
+  chromaQpAdj = rhs.chromaQpAdj;
+  *picHeader  = *rhs.picHeader;
+  treeType    = static_cast<TreeType>(rhs.treeType);
+  modeType    = static_cast<ModeType>(rhs.modeType);
+
+  std::copy(rhs.unitScale.begin(), rhs.unitScale.end(), unitScale);
+
+  const int n_cus = rhs.cus.size(), n_pus = rhs.pus.size(), n_tus = rhs.tus.size();
+  std::for_each(cus.begin(), cus.end(), [](CodingUnit *cu) { delete cu; });
+  std::for_each(pus.begin(), pus.end(), [](PredictionUnit *pu) { delete pu; });
+  std::for_each(tus.begin(), tus.end(), [](TransformUnit *tu) { delete tu; });
+  cus.resize(n_cus);
+  pus.resize(n_pus);
+  tus.resize(n_tus);
+
+  std::unordered_map<EntropyCoding::CodingUnit *, CodingUnit *>         cu_map;
+  std::unordered_map<EntropyCoding::PredictionUnit *, PredictionUnit *> pu_map;
+  std::unordered_map<EntropyCoding::TransformUnit *, TransformUnit *>   tu_map;
+
+  for (int i = 0; i < n_cus; ++i)
+  {
+    cus[i]             = new CodingUnit;
+    cus[i]->cs         = this;
+    cus[i]->slice      = slice;
+    *cus[i]            = *rhs.cus[i];
+    cu_map[rhs.cus[i]] = cus[i];
+  }
+  for (int i = 0; i < n_pus; ++i)
+  {
+    pus[i]             = new PredictionUnit;
+    pus[i]->cs         = this;
+    *pus[i]            = *rhs.pus[i];
+    pu_map[rhs.pus[i]] = pus[i];
+  }
+  for (int i = 0; i < n_tus; ++i)
+  {
+    tus[i]             = new TransformUnit;
+    tus[i]->cs         = this;
+    *tus[i]            = *rhs.tus[i];
+    tu_map[rhs.tus[i]] = tus[i];
+  }
+
+  for (int i = 0; i < n_cus; ++i)
+  {
+    cus[i]->next    = cu_map[rhs.cus[i]->next];
+    cus[i]->firstPU = pu_map[rhs.cus[i]->firstPU];
+    cus[i]->lastPU  = pu_map[rhs.cus[i]->lastPU];
+    cus[i]->firstTU = tu_map[rhs.cus[i]->firstTU];
+    cus[i]->lastTU  = tu_map[rhs.cus[i]->lastTU];
+  }
+  for (int i = 0; i < n_pus; ++i)
+  {
+    pus[i]->cu   = cu_map[rhs.pus[i]->cu];
+    pus[i]->next = pu_map[rhs.pus[i]->next];
+  }
+  for (int i = 0; i < n_tus; ++i)
+  {
+    tus[i]->cu   = cu_map[rhs.tus[i]->cu];
+    tus[i]->next = tu_map[rhs.tus[i]->next];
+    tus[i]->prev = tu_map[rhs.tus[i]->prev];
+  }
+
+  prevPLT   = rhs.prevPLT;
+  m_isTuEnc = rhs.m_isTuEnc;
+  std::copy(rhs.m_cuIdx.begin(), rhs.m_cuIdx.end(), m_cuIdx);
+  std::copy(rhs.m_puIdx.begin(), rhs.m_puIdx.end(), m_puIdx);
+  std::copy(rhs.m_tuIdx.begin(), rhs.m_tuIdx.end(), m_tuIdx);
+  m_numCUs  = rhs.m_numCUs;
+  m_numPUs  = rhs.m_numPUs;
+  m_numTUs  = rhs.m_numTUs;
+  m_cuCache = rhs.m_cuCache;
+  m_puCache = rhs.m_puCache;
+  m_tuCache = rhs.m_tuCache;
+  std::copy(rhs.m_coeffs.begin(), rhs.m_coeffs.end(), m_coeffs);
+  std::copy(rhs.m_pcmbuf.begin(), rhs.m_pcmbuf.end(), m_pcmbuf);
+  std::copy(rhs.m_runType.begin(), rhs.m_runType.end(), m_runType);
+  std::copy(rhs.m_offsets.begin(), rhs.m_offsets.end(), m_offsets);
+  return *this;
+}
+#endif
+
 void CodingStructure::destroy()
 {
   picture   = nullptr;

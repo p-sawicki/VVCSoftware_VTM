@@ -42,6 +42,10 @@
 #include "CommonLib/ContextModelling.h"
 #include "BinEncoder.h"
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "cabac_writer.hpp"
+#endif
+
 
 //! \ingroup EncoderLib
 //! \{
@@ -51,23 +55,114 @@ class EncCu;
 class CABACWriter
 {
 public:
-  CABACWriter(BinEncIf& binEncoder)   : m_BinEncoder(binEncoder), m_Bitstream(0) { m_TestCtx = m_BinEncoder.getCtx(); m_EncCu = NULL; }
-  virtual ~CABACWriter() {}
+  CABACWriter(BinEncIf &binEncoder
+#ifdef STANDALONE_ENTROPY_CODEC
+              ,
+              EntropyCoding::BinEncIf &entropyCodingBinEncoder
+#endif
+              )
+    : m_BinEncoder(binEncoder)
+    , m_Bitstream(0)
+#ifdef STANDALONE_ENTROPY_CODEC
+    , m_cabacWriter(entropyCodingBinEncoder)
+#endif
+  {
+#ifndef STANDALONE_ENTROPY_CODEC
+    m_TestCtx = m_BinEncoder.getCtx();
+    m_EncCu   = NULL;
+#endif
+  }
+  virtual ~CABACWriter()
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    if (m_entropyCodingBitstream)
+    {
+      delete m_entropyCodingBitstream;
+    }
+#endif
+  }
 
 public:
   void        initCtxModels             ( const Slice&                  slice );
   void        setEncCu(EncCu* pcEncCu) { m_EncCu = pcEncCu; }
   SliceType   getCtxInitId              ( const Slice&                  slice );
-  void        initBitstream             ( OutputBitstream*              bitstream )           { m_Bitstream = bitstream; m_BinEncoder.init( m_Bitstream ); }
+  void        initBitstream(OutputBitstream *bitstream)
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    if (m_entropyCodingBitstream)
+    {
+      delete m_entropyCodingBitstream;
+    }
+    m_entropyCodingBitstream = new EntropyCoding::OutputBitstream(*bitstream);
+    m_cabacWriter.initBitstream(m_entropyCodingBitstream);
+#else
+    m_Bitstream = bitstream;
+    m_BinEncoder.init(m_Bitstream);
+#endif
+  }
 
-  const Ctx&  getCtx                    ()                                            const   { return m_BinEncoder.getCtx();  }
-  Ctx&        getCtx                    ()                                                    { return m_BinEncoder.getCtx();  }
+  const Ctx &getCtx() const
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    m_referenceCtx = m_cabacWriter.getCtx();
+    return m_referenceCtx;
+#else
+    return m_BinEncoder.getCtx();
+#endif
+  }
 
-  void        start                     ()                                                    { m_BinEncoder.start(); }
-  void        resetBits                 ()                                                    { m_BinEncoder.resetBits(); }
-  uint64_t    getEstFracBits            ()                                            const   { return m_BinEncoder.getEstFracBits(); }
-  uint32_t    getNumBins                ()                                                    { return m_BinEncoder.getNumBins(); }
-  bool        isEncoding                ()                                                    { return m_BinEncoder.isEncoding(); }
+#ifdef STANDALONE_ENTROPY_CODEC
+  void setCtx(const Ctx &ctx)
+  {
+    m_ctx                  = ctx;
+    m_cabacWriter.getCtx() = m_ctx;
+  }
+#else
+  Ctx &getCtx() { return m_BinEncoder.getCtx(); }
+#endif
+
+  void start()
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    m_cabacWriter.start();
+#else
+    m_BinEncoder.start();
+#endif
+  }
+
+  void resetBits()
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    m_cabacWriter.resetBits();
+#else
+    m_BinEncoder.resetBits();
+#endif
+  }
+
+  uint64_t getEstFracBits() const
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    return m_cabacWriter.getEstFracBits();
+#else
+    return m_BinEncoder.getEstFracBits();
+#endif
+  }
+  uint32_t getNumBins()
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    return m_cabacWriter.getNumBins();
+#else
+    return m_BinEncoder.getNumBins();
+#endif
+  }
+  bool isEncoding()
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    return m_cabacWriter.isEncoding();
+#else
+    return m_BinEncoder.isEncoding();
+#endif
+  }
 
 public:
   // slice segment data (clause 7.3.8.1)
@@ -153,15 +248,15 @@ public:
   void        joint_cb_cr               ( const TransformUnit&          tu,       const int cbfMask );
 
 
-  void        codeAlfCtuEnableFlags     ( CodingStructure& cs, ChannelType channel, AlfParam* alfParam);
-  void        codeAlfCtuEnableFlags     ( CodingStructure& cs, ComponentID compID, AlfParam* alfParam);
-  void        codeAlfCtuEnableFlag      ( CodingStructure& cs, uint32_t ctuRsAddr, const int compIdx, AlfParam* alfParam );
-  void        codeAlfCtuFilterIndex(CodingStructure& cs, uint32_t ctuRsAddr, bool alfEnableLuma);
+  void        codeAlfCtuEnableFlags     ( const CodingStructure& cs, ChannelType channel, AlfParam* alfParam);
+  void        codeAlfCtuEnableFlags     ( const CodingStructure& cs, ComponentID compID, AlfParam* alfParam);
+  void        codeAlfCtuEnableFlag      ( const CodingStructure& cs, uint32_t ctuRsAddr, const int compIdx, AlfParam* alfParam );
+  void        codeAlfCtuFilterIndex(const CodingStructure& cs, uint32_t ctuRsAddr, bool alfEnableLuma);
 
-  void        codeAlfCtuAlternatives     ( CodingStructure& cs, ChannelType channel, AlfParam* alfParam);
-  void        codeAlfCtuAlternatives     ( CodingStructure& cs, ComponentID compID, AlfParam* alfParam);
-  void        codeAlfCtuAlternative      ( CodingStructure& cs, uint32_t ctuRsAddr, const int compIdx, const AlfParam* alfParam = NULL );
-  void codeCcAlfFilterControlIdc(uint8_t idcVal, CodingStructure &cs, const ComponentID compID, const int curIdx,
+  void        codeAlfCtuAlternatives     ( const CodingStructure& cs, ChannelType channel, AlfParam* alfParam);
+  void        codeAlfCtuAlternatives     ( const CodingStructure& cs, ComponentID compID, AlfParam* alfParam);
+  void        codeAlfCtuAlternative      ( const CodingStructure& cs, uint32_t ctuRsAddr, const int compIdx, const AlfParam* alfParam = NULL );
+  void codeCcAlfFilterControlIdc(uint8_t idcVal, const CodingStructure &cs, const ComponentID compID, const int curIdx,
                                  const uint8_t *filterControlIdc, Position lumaPos, const int filterCount);
 
 private:
@@ -182,29 +277,48 @@ private:
   Ctx               m_TestCtx;
   EncCu*            m_EncCu;
   ScanElement*      m_scanOrder;
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  mutable Ctx                     m_referenceCtx;
+  EntropyCoding::Ctx              m_ctx;
+  EntropyCoding::CABACWriter      m_cabacWriter;
+  EntropyCoding::OutputBitstream *m_entropyCodingBitstream;
+#endif
 };
-
-
 
 class CABACEncoder
 {
 public:
   CABACEncoder()
-    : m_CABACWriterStd      ( m_BinEncoderStd )
-    , m_CABACEstimatorStd   ( m_BitEstimatorStd )
+    : m_CABACWriterStd      ( m_BinEncoderStd
+#ifdef STANDALONE_ENTROPY_CODEC
+    , m_entropyCodingBinEncoderStd
+#endif
+)
+    , m_CABACEstimatorStd   ( m_BitEstimatorStd
+#ifdef STANDALONE_ENTROPY_CODEC
+    , m_entropyCodingBitEstimatorStd
+#endif
+)
     , m_CABACWriter         { &m_CABACWriterStd,   }
     , m_CABACEstimator      { &m_CABACEstimatorStd }
-  {}
+  {
+  }
 
-  CABACWriter*                getCABACWriter          ( const SPS*   sps   )        { return m_CABACWriter   [0]; }
-  CABACWriter*                getCABACEstimator       ( const SPS*   sps   )        { return m_CABACEstimator[0]; }
+  CABACWriter *getCABACWriter(const SPS *sps) { return m_CABACWriter[0]; }
+  CABACWriter *getCABACEstimator(const SPS *sps) { return m_CABACEstimator[0]; }
+
 private:
-  BinEncoder_Std      m_BinEncoderStd;
-  BitEstimator_Std    m_BitEstimatorStd;
-  CABACWriter         m_CABACWriterStd;
-  CABACWriter         m_CABACEstimatorStd;
-  CABACWriter*        m_CABACWriter   [BPM_NUM-1];
-  CABACWriter*        m_CABACEstimator[BPM_NUM-1];
+  BinEncoder_Std   m_BinEncoderStd;
+  BitEstimator_Std m_BitEstimatorStd;
+  CABACWriter      m_CABACWriterStd;
+  CABACWriter      m_CABACEstimatorStd;
+  CABACWriter *    m_CABACWriter[BPM_NUM - 1];
+  CABACWriter *    m_CABACEstimator[BPM_NUM - 1];
+#ifdef STANDALONE_ENTROPY_CODEC
+  EntropyCoding::BinEncoder_Std   m_entropyCodingBinEncoderStd;
+  EntropyCoding::BitEstimator_Std m_entropyCodingBitEstimatorStd;
+#endif
 };
 
 //! \}

@@ -53,6 +53,11 @@
 //! \ingroup CommonLib
 //! \{
 #include "CommonLib/MotionInfo.h"
+
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "slice.hpp"
+#endif
+
 struct MotionInfo;
 
 
@@ -1316,6 +1321,23 @@ private:
 public:
   SPSRExt();
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::SPSRExt() const
+  {
+    return EntropyCoding::SPSRExt(m_extendedPrecisionProcessingFlag, m_tsrcRicePresentFlag,
+                                  m_persistentRiceAdaptationEnabledFlag, m_rrcRiceExtensionEnableFlag);
+  }
+
+  const SPSRExt &operator=(const EntropyCoding::SPSRExt &rhs)
+  {
+    m_extendedPrecisionProcessingFlag     = rhs.getExtendedPrecisionProcessingFlag();
+    m_tsrcRicePresentFlag                 = rhs.getTSRCRicePresentFlag();
+    m_persistentRiceAdaptationEnabledFlag = rhs.getPersistentRiceAdaptationEnabledFlag();
+    m_rrcRiceExtensionEnableFlag          = rhs.getRrcRiceExtensionEnableFlag();
+    return *this;
+  }
+#endif
+
   bool settingsDifferFromDefaults() const
   {
     return getTransformSkipRotationEnabledFlag()
@@ -1550,6 +1572,67 @@ public:
 
   SPS();
   virtual                 ~SPS();
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::SPS() const
+  {
+    return EntropyCoding::SPS(
+      m_affineAmvrEnabledFlag, m_MMVD, m_SBT, m_ISP, static_cast<EntropyCoding::ChromaFormat>(m_chromaFormatIdc),
+      m_log2MinCodingBlockSize, m_CTUSize, m_uiMaxCUWidth, m_transformSkipEnabledFlag, m_log2MaxTransformSkipBlockSize,
+      m_BDPCMEnabledFlag, m_JointCbCrEnabledFlag, m_bitDepths, m_entropyCodingSyncEnabledFlag, m_qpBDOffset,
+      m_log2MaxTbSize, m_saoEnabledFlag, m_spsRangeExtension, m_alfEnabledFlag, m_ccalfEnabledFlag, m_IBCFlag,
+      m_useColorTrans, m_PLTMode, m_AMVREnabledFlag, m_LMChroma, m_MTS, m_IntraMTS, m_InterMTS, m_LFNST, m_Affine,
+      m_AffineType, m_bcw, m_ciip, m_Geo, m_MRL, m_MIP, m_maxNumMergeCand, m_maxNumIBCMergeCand, m_maxNumGeoCand);
+  }
+
+  const SPS &operator=(const EntropyCoding::SPS &rhs)
+  {
+    m_affineAmvrEnabledFlag         = rhs.getAffineAmvrEnabledFlag();
+    m_MMVD                          = rhs.getUseMMVD();
+    m_SBT                           = rhs.getUseSBT();
+    m_ISP                           = rhs.getUseISP();
+    m_chromaFormatIdc               = static_cast<ChromaFormat>(rhs.getChromaFormatIdc());
+    m_log2MinCodingBlockSize        = rhs.getLog2MinCodingBlockSize();
+    m_CTUSize                       = rhs.getCTUSize();
+    m_uiMaxCUWidth                  = rhs.getMaxCUWidth();
+    m_transformSkipEnabledFlag      = rhs.getTransformSkipEnabledFlag();
+    m_log2MaxTransformSkipBlockSize = rhs.getLog2MaxTransformSkipBlockSize();
+    m_BDPCMEnabledFlag              = rhs.getBDPCMEnabledFlag();
+    m_JointCbCrEnabledFlag          = rhs.getJointCbCrEnabledFlag();
+    m_bitDepths                     = rhs.getBitDepths();
+    m_entropyCodingSyncEnabledFlag  = rhs.getEntropyCodingSyncEnabledFlag();
+    m_log2MaxTbSize                 = rhs.getLog2MaxTbSize();
+    m_saoEnabledFlag                = rhs.getSAOEnabledFlag();
+    m_spsRangeExtension             = rhs.getSpsRangeExtension();
+    m_alfEnabledFlag                = rhs.getALFEnabledFlag();
+    m_ccalfEnabledFlag              = rhs.getCCALFEnabledFlag();
+    m_IBCFlag                       = rhs.getIBCFlag();
+    m_useColorTrans                 = rhs.getUseColorTrans();
+    m_PLTMode                       = rhs.getPLTMode();
+    m_AMVREnabledFlag               = rhs.getAMVREnabledFlag();
+    m_LMChroma                      = rhs.getUseLMChroma();
+    m_MTS                           = rhs.getUseMTS();
+    m_IntraMTS                      = rhs.getUseIntraMTS();
+    m_InterMTS                      = rhs.getUseInterMTS();
+    m_LFNST                         = rhs.getUseLFNST();
+    m_Affine                        = rhs.getUseAffine();
+    m_AffineType                    = rhs.getUseAffineType();
+    m_bcw                           = rhs.getUseBcw();
+    m_ciip                          = rhs.getUseCiip();
+    m_Geo                           = rhs.getUseGeo();
+    m_MRL                           = rhs.getUseMRL();
+    m_MIP                           = rhs.getUseMIP();
+    m_maxNumMergeCand               = rhs.getMaxNumMergeCand();
+    m_maxNumIBCMergeCand            = rhs.getMaxNumIBCMergeCand();
+    m_maxNumGeoCand                 = rhs.getMaxNumGeoCand();
+
+    for (int i = 0; i < MAX_NUM_CHANNEL_TYPE; ++i)
+    {
+      m_qpBDOffset[i] = rhs.getQpBDOffset(static_cast<EntropyCoding::ChannelType>(i));
+    }
+    return *this;
+  }
+#endif
 
   int                     getSPSId() const                                                                { return m_SPSId;                                                      }
   void                    setSPSId(int i)                                                                 { m_SPSId = i;                                                         }
@@ -2036,6 +2119,15 @@ public:
                          PPS();
   virtual                ~PPS();
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::PPS() const
+  {
+    return EntropyCoding::PPS(m_useDQP, m_chromaQpOffsetListLen, m_ctuSize, m_numTileCols, m_tileColBd, m_ctuToTileCol,
+                              m_ctuToTileRow, m_cabacInitPresentFlag, m_picWidthInLumaSamples,
+                              m_picHeightInLumaSamples);
+  }
+#endif
+
   int                    getPPSId() const                                                 { return m_PPSId;                               }
   void                   setPPSId(int i)                                                  { m_PPSId = i;                                  }
   int                    getSPSId() const                                                 { return m_SPSId;                               }
@@ -2291,6 +2383,15 @@ public:
   APS();
   virtual                ~APS();
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::APS() const { return EntropyCoding::APS(m_alfAPSParam); }
+
+  const APS& operator=(const EntropyCoding::APS& rhs){ 
+    m_alfAPSParam = rhs.getAlfAPSParam();
+    return *this;
+  }
+#endif
+
   int                    getAPSId() const                                                 { return m_APSId;                               }
   void                   setAPSId(int i)                                                  { m_APSId = i;                                  }
 
@@ -2332,6 +2433,27 @@ struct WPScalingParam
   int  offset;
   int  shift;
   int  round;
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::WPScalingParam() const
+  {
+    return { presentFlag, log2WeightDenom, codedWeight, codedOffset, w, o, offset, shift, round };
+  }
+
+  const WPScalingParam &operator=(const EntropyCoding::WPScalingParam &rhs)
+  {
+    presentFlag     = rhs.presentFlag;
+    log2WeightDenom = rhs.log2WeightDenom;
+    codedWeight     = rhs.codedWeight;
+    codedOffset     = rhs.codedOffset;
+    w               = rhs.w;
+    o               = rhs.o;
+    offset          = rhs.offset;
+    shift           = rhs.shift;
+    round           = rhs.round;
+    return *this;
+  }
+#endif
 
   static bool isWeighted(const WPScalingParam *wp);
 };
@@ -2433,6 +2555,32 @@ private:
 public:
                               PicHeader();
   virtual                     ~PicHeader();
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::PicHeader() const
+  {
+    return EntropyCoding::PicHeader(m_splitConsOverrideFlag, m_cuQpDeltaSubdivIntra, m_cuQpDeltaSubdivInter,
+                                    m_cuChromaQpOffsetSubdivIntra, m_cuChromaQpOffsetSubdivInter, m_mvdL1ZeroFlag,
+                                    m_maxNumAffineMergeCand, m_minQT, m_maxMTTHierarchyDepth, m_maxBTSize, m_maxTTSize);
+  }
+
+  const PicHeader &operator=(const EntropyCoding::PicHeader &rhs)
+  {
+    m_splitConsOverrideFlag       = rhs.getSplitConsOverrideFlag();
+    m_cuQpDeltaSubdivIntra        = rhs.getCuQpDeltaSubdivIntra();
+    m_cuQpDeltaSubdivInter        = rhs.getCuQpDeltaSubdivInter();
+    m_cuChromaQpOffsetSubdivIntra = rhs.getCuChromaQpOffsetSubdivIntra();
+    m_cuChromaQpOffsetSubdivInter = rhs.getCuChromaQpOffsetSubdivInter();
+    m_mvdL1ZeroFlag               = rhs.getMvdL1ZeroFlag();
+    m_maxNumAffineMergeCand       = rhs.getMaxNumAffineMergeCand();
+    std::copy(rhs.getMinQt().begin(), rhs.getMinQt().end(), m_minQT);
+    std::copy(rhs.getMaxMTTHierarchyDepth().begin(), rhs.getMaxMTTHierarchyDepth().end(), m_maxMTTHierarchyDepth);
+    std::copy(rhs.getMaxBTSize().begin(), rhs.getMaxBTSize().end(), m_maxBTSize);
+    std::copy(rhs.getMaxTTSize().begin(), rhs.getMaxTTSize().end(), m_maxTTSize);
+    return *this;
+  }
+#endif
+
   void                        initPicHeader();
   bool                        isValid()                                                 { return m_valid;                                                                              }
   void                        setValid()                                                { m_valid = true;                                                                              }
@@ -2758,6 +2906,86 @@ private:
 public:
                               Slice();
   virtual                     ~Slice();
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::Slice() const
+  {
+    std::array<EntropyCoding::APS *, ALF_CTB_MAX_NUM_APS> apss;
+    std::transform(m_alfApss, m_alfApss + ALF_CTB_MAX_NUM_APS, apss.begin(),
+                   [](APS *aps) { return new EntropyCoding::APS(*aps); });
+
+    EntropyCoding::WeightPredTable table;
+    for (int i = 0; i < table.size(); ++i)
+    {
+      for (int j = 0; j < table.front().size(); ++j)
+      {
+        EntropyCoding::copy_array(m_weightPredTable[i][j], table[i][j]);
+      }
+    }
+
+    return EntropyCoding::Slice(m_saoEnabledFlag, static_cast<EntropyCoding::SliceType>(m_eSliceType), m_iSliceQp,
+                                m_ChromaQpAdjEnabled, m_depQuantEnabledFlag, m_riceBaseLevelValue,
+                                m_signDataHidingEnabledFlag, m_tsResidualCodingDisabledFlag, m_aiNumRefIdx, m_bCheckLDC,
+                                m_biDirPred, m_symRefIdx, m_independentSliceIdx, std::move(table), m_cabacInitFlag,
+                                static_cast<EntropyCoding::SliceType>(m_encCABACTableIdx), std::move(apss),
+                                m_alfEnabledFlag, m_numAlfApsIdsLuma, m_alfApsIdChroma, m_tsrc_index, m_riceBit);
+  }
+
+  const Slice &operator=(const EntropyCoding::Slice &rhs)
+  {
+    for (int i = 0; i < ALF_CTB_MAX_NUM_APS; ++i)
+    {
+      *m_alfApss[i] = *rhs.getAlfAPSs()[i];
+    }
+
+    for (int i = 0; i < NUM_REF_PIC_LIST_01; ++i)
+    {
+      for (int j = 0; j < MAX_NUM_REF; ++j)
+      {
+        std::copy(rhs.getWeightPredTable()[i][j].begin(), rhs.getWeightPredTable()[i][j].end(),
+                  m_weightPredTable[i][j]);
+      }
+    }
+
+    for (int i = 0; i < MAX_NUM_CHANNEL_TYPE; ++i)
+    {
+      m_saoEnabledFlag[i] = rhs.getSaoEnabledFlag(static_cast<EntropyCoding::ChannelType>(i));
+    }
+    for (int i = 0; i < NUM_REF_PIC_LIST_01; ++i)
+    {
+      m_aiNumRefIdx[i] = rhs.getNumRefIdx(static_cast<EntropyCoding::RefPicList>(i));
+    }
+    for (int i = 0; i < 2; ++i)
+    {
+      m_symRefIdx[i] = rhs.getSymRefIdx(i);
+    }
+    for (int i = 0; i < MAX_NUM_COMPONENT; ++i)
+    {
+      m_alfEnabledFlag[i] = rhs.getAlfEnabledFlag(static_cast<EntropyCoding::ComponentID>(i));
+    }
+    for (int i = 0; i < 8; ++i)
+    {
+      m_riceBit[i] = rhs.getRiceBit(i);
+    }
+    m_eSliceType                   = static_cast<SliceType>(rhs.getSliceType());
+    m_iSliceQp                     = rhs.getSliceQp();
+    m_ChromaQpAdjEnabled           = rhs.getUseChromaQpAdj();
+    m_depQuantEnabledFlag          = rhs.getDepQuantEnabledFlag();
+    m_riceBaseLevelValue           = rhs.getRiceBaseLevel();
+    m_signDataHidingEnabledFlag    = rhs.getSignDataHidingEnabledFlag();
+    m_tsResidualCodingDisabledFlag = rhs.getTSResidualCodingDisabledFlag();
+    m_bCheckLDC                    = rhs.getCheckLDC();
+    m_biDirPred                    = rhs.getBiDirPred();
+    m_independentSliceIdx          = rhs.getIndependentSliceIdx();
+    m_cabacInitFlag                = rhs.getCabacInitFlag();
+    m_encCABACTableIdx             = static_cast<SliceType>(rhs.getEncCABACTableIdx());
+    m_numAlfApsIdsLuma             = rhs.getNumAlfApsIdsLuma();
+    m_alfApsIdChroma               = rhs.getAlfApsIdChroma();
+    m_tsrc_index                   = rhs.get_tsrc_index();
+    return *this;
+  }
+#endif
+
   void                        initSlice();
   void                        inheritFromPicHeader( PicHeader *picHeader, const PPS *pps, const SPS *sps );
   void                        setPicHeader( const PicHeader* pcPicHeader )           { m_pcPicHeader = pcPicHeader;                                  }
@@ -3181,6 +3409,16 @@ private:
   unsigned getValIdx    ( const Slice &slice, const ChannelType chType ) const;
 
 public:
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::PreCalcValues() const
+  {
+    return EntropyCoding::PreCalcValues(static_cast<EntropyCoding::ChromaFormat>(chrFormat), multiBlock422, maxCUWidth,
+                                        maxCUHeight, maxCUWidthMask, maxCUHeightMask, maxCUWidthLog2, maxCUHeightLog2,
+                                        widthInCtus, sizeInCtus, noChroma2x2, ISingleTree, maxBtDepth, minBtSize,
+                                        maxBtSize, minTtSize, maxTtSize, minQtSize);
+  }
+#endif
+
   unsigned getMaxBtDepth( const Slice &slice, const ChannelType chType ) const;
   unsigned getMinBtSize ( const Slice &slice, const ChannelType chType ) const;
   unsigned getMaxBtSize ( const Slice &slice, const ChannelType chType ) const;

@@ -44,6 +44,10 @@
 #include "MotionInfo.h"
 #include "ChromaFormat.h"
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "unit.hpp"
+#endif
+
 
 // ---------------------------------------------------------------------------
 // tools
@@ -51,6 +55,30 @@
 struct PLTBuf {
   uint8_t        curPLTSize[MAX_NUM_CHANNEL_TYPE];
   Pel            curPLT[MAX_NUM_COMPONENT][MAXPLTPREDSIZE];
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::PLTBuf() const
+  {
+    EntropyCoding::PLTBuf result;
+    EntropyCoding::copy_array(curPLTSize, result.curPLTSize);
+    for (int i = 0; i < result.curPLT.size(); ++i)
+    {
+      EntropyCoding::copy_array(curPLT[i], result.curPLT[i]);
+    }
+
+    return result;
+  }
+
+  const PLTBuf &operator=(const EntropyCoding::PLTBuf &rhs)
+  {
+    std::copy(rhs.curPLTSize.begin(), rhs.curPLTSize.end(), curPLTSize);
+    for (int i = 0; i < MAX_NUM_COMPONENT; ++i)
+    {
+      std::copy(rhs.curPLT[i].begin(), rhs.curPLT[i].end(), curPLT[i]);
+    }
+    return *this;
+  }
+#endif
 };
 inline Position recalcPosition(const ChromaFormat _cf, const ComponentID srcCId, const ComponentID dstCId, const Position &pos)
 {
@@ -130,6 +158,25 @@ struct CompArea : public Area
   ChromaFormat chromaFormat;
   ComponentID compID;
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::CompArea() const
+  {
+    return EntropyCoding::CompArea(static_cast<EntropyCoding::ComponentID>(compID),
+                                   static_cast<EntropyCoding::ChromaFormat>(chromaFormat), x, y, width, height);
+  }
+
+  const CompArea &operator=(const EntropyCoding::CompArea &rhs)
+  {
+    chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
+    compID       = static_cast<ComponentID>(rhs.compID);
+    x            = rhs.x;
+    y            = rhs.y;
+    width        = rhs.width;
+    height       = rhs.height;
+    return *this;
+  }
+#endif
+
   Position chromaPos() const;
   Position lumaPos()   const;
 
@@ -191,7 +238,19 @@ struct UnitArea
   UnitArea(const ChromaFormat _chromaFormat, const CompArea  &blkY, const CompArea  &blkCb, const CompArea  &blkCr);
   UnitArea(const ChromaFormat _chromaFormat,       CompArea &&blkY,       CompArea &&blkCb,       CompArea &&blkCr);
 
-        CompArea& Y()                                  { return blocks[COMPONENT_Y];  }
+#ifdef STANDALONE_ENTROPY_CODEC
+  UnitArea(const EntropyCoding::UnitArea &rhs)
+    : chromaFormat(static_cast<ChromaFormat>(rhs.chromaFormat)), blocks(rhs.blocks.begin(), rhs.blocks.end())
+  {
+  }
+
+  operator EntropyCoding::UnitArea() const
+  {
+    return EntropyCoding::UnitArea(static_cast<EntropyCoding::ChromaFormat>(chromaFormat), blocks);
+  }
+#endif
+
+  CompArea &      Y() { return blocks[COMPONENT_Y]; }
   const CompArea& Y()                            const { return blocks[COMPONENT_Y];  }
         CompArea& Cb()                                 { return blocks[COMPONENT_Cb]; }
   const CompArea& Cb()                           const { return blocks[COMPONENT_Cb]; }
@@ -338,6 +397,70 @@ struct CodingUnit : public UnitArea
   CodingUnit(const UnitArea &unit);
   CodingUnit(const ChromaFormat _chromaFormat, const Area &area);
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::CodingUnit() const
+  {
+    return EntropyCoding::CodingUnit(static_cast<UnitArea>(*this), static_cast<EntropyCoding::ChannelType>(chType),
+                                     static_cast<EntropyCoding::PredMode>(predMode), depth, qtDepth, btDepth, mtDepth,
+                                     chromaQpAdj, qp, splitSeries, static_cast<EntropyCoding::TreeType>(treeType),
+                                     static_cast<EntropyCoding::ModeType>(modeType), modeTypeSeries, skip, mmvdSkip,
+                                     affine, affineType, colorTransform, geoFlag, bdpcmMode, bdpcmModeChroma, imv,
+                                     rootCbf, sbtInfo, tileIdx, lfnstIdx, BcwIdx, mipFlag, smvdMode, ispMode, useEscape,
+                                     useRotation, reuseflag, lastPLTSize, reusePLTSize, curPLTSize, curPLT, idx);
+  }
+
+  const CodingUnit &operator=(const EntropyCoding::CodingUnit &rhs)
+  {
+    chromaFormat    = static_cast<ChromaFormat>(rhs.chromaFormat);
+    blocks          = rhs.blocks;
+    chType          = static_cast<ChannelType>(rhs.chType);
+    predMode        = static_cast<PredMode>(rhs.predMode);
+    depth           = rhs.depth;
+    qtDepth         = rhs.qtDepth;
+    btDepth         = rhs.btDepth;
+    mtDepth         = rhs.mtDepth;
+    chromaQpAdj     = rhs.chromaQpAdj;
+    qp              = rhs.qp;
+    splitSeries     = rhs.splitSeries;
+    treeType        = static_cast<TreeType>(rhs.treeType);
+    modeType        = static_cast<ModeType>(rhs.modeType);
+    modeTypeSeries  = rhs.modeTypeSeries;
+    skip            = rhs.skip;
+    mmvdSkip        = rhs.mmvdSkip;
+    affine          = rhs.affine;
+    affineType      = rhs.affineType;
+    colorTransform  = rhs.colorTransform;
+    geoFlag         = rhs.geoFlag;
+    bdpcmMode       = rhs.bdpcmMode;
+    bdpcmModeChroma = rhs.bdpcmModeChroma;
+    imv             = rhs.imv;
+    rootCbf         = rhs.rootCbf;
+    sbtInfo         = rhs.sbtInfo;
+    tileIdx         = rhs.tileIdx;
+    lfnstIdx        = rhs.lfnstIdx;
+    BcwIdx          = rhs.BcwIdx;
+    mipFlag         = rhs.mipFlag;
+    smvdMode        = rhs.smvdMode;
+    ispMode         = rhs.ispMode;
+    idx             = rhs.idx;
+
+    std::copy(rhs.useEscape.begin(), rhs.useEscape.end(), useEscape);
+    std::copy(rhs.useRotation.begin(), rhs.useRotation.end(), useRotation);
+    for (int i = 0; i < MAX_NUM_CHANNEL_TYPE; ++i)
+    {
+      std::copy(rhs.reuseflag[i].begin(), rhs.reuseflag[i].end(), reuseflag[i]);
+    }
+    std::copy(rhs.lastPLTSize.begin(), rhs.lastPLTSize.end(), lastPLTSize);
+    std::copy(rhs.reusePLTSize.begin(), rhs.reusePLTSize.end(), reusePLTSize);
+    std::copy(rhs.curPLTSize.begin(), rhs.curPLTSize.end(), curPLTSize);
+    for (int i = 0; i < MAX_NUM_COMPONENT; ++i)
+    {
+      std::copy(rhs.curPLT[i].begin(), rhs.curPLT[i].end(), curPLT[i]);
+    }
+    return *this;
+  }
+#endif
+
   CodingUnit& operator=( const CodingUnit& other );
 
   void initData();
@@ -370,9 +493,16 @@ struct CodingUnit : public UnitArea
 
 struct IntraPredictionData
 {
-  uint32_t  intraDir[MAX_NUM_CHANNEL_TYPE];
-  bool      mipTransposedFlag;
-  int       multiRefIdx;
+  uint32_t intraDir[MAX_NUM_CHANNEL_TYPE];
+  bool     mipTransposedFlag;
+  int      multiRefIdx;
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::IntraPredictionData() const
+  {
+    return EntropyCoding::IntraPredictionData(intraDir, mipTransposedFlag, multiRefIdx);
+  }
+#endif
 };
 
 struct InterPredictionData
@@ -414,6 +544,28 @@ struct InterPredictionData
   Mv        bv;                             // block vector for IBC
   Mv        bvd;                            // block vector difference for IBC
   uint8_t   mmvdEncOptMode;                  // 0: no action 1: skip chroma MC for MMVD candidate pre-selection 2: skip chroma MC and BIO for MMVD candidate pre-selection
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::InterPredictionData() const
+  {
+    std::array<EntropyCoding::Mv, NUM_REF_PIC_LIST_01> _mvd;
+    EntropyCoding::copy_array(mvd, _mvd);
+
+    std::array<EntropyCoding::Mv, NUM_REF_PIC_LIST_01> _mv;
+    EntropyCoding::copy_array(mv, _mv);
+
+    EntropyCoding::MvdAffi _mvdAffi;
+    for (int i = 0; i < _mvdAffi.size(); ++i)
+    {
+      EntropyCoding::copy_array(mvdAffi[i], _mvdAffi[i]);
+    }
+
+    return EntropyCoding::InterPredictionData(
+      mergeFlag, regularMergeFlag, mergeIdx, geoSplitDir, geoMergeIdx0, geoMergeIdx1, mmvdMergeFlag, mmvdMergeIdx,
+      interDir, mvpIdx, std::move(_mvd), std::move(_mv), refIdx, static_cast<EntropyCoding::MergeType>(mergeType),
+      std::move(_mvdAffi), ciipFlag);
+  }
+#endif
 };
 
 struct PredictionUnit : public UnitArea, public IntraPredictionData, public InterPredictionData
@@ -426,6 +578,49 @@ struct PredictionUnit : public UnitArea, public IntraPredictionData, public Inte
   PredictionUnit(): chType( CH_L ) { }
   PredictionUnit(const UnitArea &unit);
   PredictionUnit(const ChromaFormat _chromaFormat, const Area &area);
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::PredictionUnit() const
+  {
+    return EntropyCoding::PredictionUnit(static_cast<UnitArea>(*this), static_cast<IntraPredictionData>(*this),
+                                         static_cast<InterPredictionData>(*this),
+                                         static_cast<EntropyCoding::ChannelType>(chType), idx);
+  }
+
+  const PredictionUnit &operator=(const EntropyCoding::PredictionUnit &rhs)
+  {
+    chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
+    blocks       = rhs.blocks;
+
+    std::copy(rhs.intraDir.begin(), rhs.intraDir.end(), intraDir);
+    mipTransposedFlag = rhs.mipTransposedFlag;
+    multiRefIdx       = rhs.multiRefIdx;
+
+    mergeFlag        = rhs.mergeFlag;
+    regularMergeFlag = rhs.regularMergeFlag;
+    mergeIdx         = rhs.mergeIdx;
+    geoSplitDir      = rhs.geoSplitDir;
+    geoMergeIdx0     = rhs.geoMergeIdx0;
+    geoMergeIdx1     = rhs.geoMergeIdx1;
+    mmvdMergeFlag    = rhs.mmvdMergeFlag;
+    mmvdMergeIdx     = rhs.mmvdMergeIdx;
+    interDir         = rhs.interDir;
+    mergeType        = static_cast<MergeType>(rhs.mergeType);
+    ciipFlag         = rhs.ciipFlag;
+    std::copy(rhs.mvpIdx.begin(), rhs.mvpIdx.end(), mvpIdx);
+    std::copy(rhs.mvd.begin(), rhs.mvd.end(), mvd);
+    std::copy(rhs.mv.begin(), rhs.mv.end(), mv);
+    std::copy(rhs.refIdx.begin(), rhs.refIdx.end(), refIdx);
+    for (int i = 0; i < NUM_REF_PIC_LIST_01; ++i)
+    {
+      std::copy(rhs.mvdAffi[i].begin(), rhs.mvdAffi[i].end(), mvdAffi[i]);
+    }
+
+    chType = static_cast<ChannelType>(rhs.chType);
+    idx    = rhs.idx;
+    return *this;
+  }
+#endif
 
   void initData();
 
@@ -465,6 +660,33 @@ struct TransformUnit : public UnitArea
   TransformUnit() : chType( CH_L ) { }
   TransformUnit(const UnitArea& unit);
   TransformUnit(const ChromaFormat _chromaFormat, const Area &area);
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::TransformUnit() const
+  {
+    return EntropyCoding::TransformUnit(static_cast<UnitArea>(*this), static_cast<EntropyCoding::ChannelType>(chType),
+                                        depth, mtsIdx, noResidual, jointCbCr, cbf, idx, m_coeffs, m_pcmbuf, m_runType);
+  }
+
+  const TransformUnit &operator=(const EntropyCoding::TransformUnit &rhs)
+  {
+    chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
+    blocks       = rhs.blocks;
+
+    chType     = static_cast<ChannelType>(rhs.chType);
+    depth      = rhs.depth;
+    noResidual = rhs.noResidual;
+    jointCbCr  = rhs.jointCbCr;
+    idx        = rhs.idx;
+
+    std::copy(rhs.mtsIdx.begin(), rhs.mtsIdx.end(), mtsIdx);
+    std::copy(rhs.cbf.begin(), rhs.cbf.end(), cbf);
+    std::copy(rhs.getCoeffs().begin(), rhs.getCoeffs().end(), m_coeffs);
+    std::copy(rhs.getPcmBuf().begin(), rhs.getPcmBuf().end(), m_pcmbuf);
+    std::copy(rhs.getRunType().begin(), rhs.getRunType().end(), m_runType);
+    return *this;
+  }
+#endif
 
   void initData();
 

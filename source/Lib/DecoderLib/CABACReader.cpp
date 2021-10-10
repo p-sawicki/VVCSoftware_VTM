@@ -65,6 +65,10 @@
 
 void CABACReader::initCtxModels( Slice& slice )
 {
+#ifdef STANDALONE_ENTROPY_CODEC
+  EntropyCoding::CodingStructure cs = *slice.getPic()->cs;
+  m_cabacReader.initCtxModels(*cs.slice);
+#else
   SliceType sliceType  = slice.getSliceType();
   int       qp         = slice.getSliceQp();
   if( slice.getPPS()->getCabacInitPresentFlag() && slice.getCabacInitFlag() )
@@ -89,6 +93,7 @@ void CABACReader::initCtxModels( Slice& slice )
 #else
   m_BinDecoder.riceStatReset(slice.getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
 #endif
+#endif
 }
 
 
@@ -101,6 +106,9 @@ void CABACReader::initCtxModels( Slice& slice )
 
 bool CABACReader::terminating_bit()
 {
+#ifdef STANDALONE_ENTROPY_CODEC
+  return m_cabacReader.terminating_bit();
+#else
   if( m_BinDecoder.decodeBinTrm() )
   {
     m_BinDecoder.finish();
@@ -112,10 +120,14 @@ bool CABACReader::terminating_bit()
     return true;
   }
   return false;
+  #endif
 }
 
 void CABACReader::remaining_bytes( bool noTrailingBytesExpected )
 {
+#ifdef STANDALONE_ENTROPY_CODEC
+  m_cabacReader.remaining_bytes(noTrailingBytesExpected);
+#else
   if( noTrailingBytesExpected )
   {
     CHECK( 0 != m_Bitstream->getNumBitsLeft(), "Bits left when not supposed" );
@@ -131,6 +143,7 @@ void CABACReader::remaining_bytes( bool noTrailingBytesExpected )
       }
     }
   }
+#endif
 }
 
 //================================================================================
@@ -141,6 +154,11 @@ void CABACReader::remaining_bytes( bool noTrailingBytesExpected )
 
 void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, int (&qps)[2], unsigned ctuRsAddr )
 {
+#ifdef STANDALONE_ENTROPY_CODEC
+  EntropyCoding::CodingStructure _cs = cs;
+  m_cabacReader.coding_tree_unit(_cs, area, qps, ctuRsAddr);
+  cs = _cs;
+#else
   CUCtx cuCtx( qps[CH_L] );
   QTBTPartitioner partitioner;
 
@@ -243,7 +261,7 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
 
   DTRACE_COND( ctuRsAddr == 0, g_trace_ctx, D_QP_PER_CTU, "\n%4d %2d", cs.picture->poc, cs.slice->getSliceQpBase() );
   DTRACE     (                 g_trace_ctx, D_QP_PER_CTU, " %3d",           qps[CH_L] - cs.slice->getSliceQpBase() );
-
+#endif
 }
 
 void CABACReader::readAlfCtuFilterIndex(CodingStructure& cs, unsigned ctuRsAddr)

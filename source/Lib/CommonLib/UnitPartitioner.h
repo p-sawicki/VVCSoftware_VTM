@@ -42,6 +42,10 @@
 
 #include "CommonDef.h"
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "unit_partitioner.hpp"
+#endif
+
 static_assert( MAX_CU_TILING_PARTITIONS >= 4, "Minimum required number of partitions for the Partitioning type is 4!" );
 typedef std::vector <UnitArea> Partitioning;
 
@@ -99,6 +103,35 @@ struct PartLevel
   PartLevel();
   PartLevel( const PartSplit _split, const Partitioning&  _parts );
   PartLevel( const PartSplit _split,       Partitioning&& _parts );
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  PartLevel(const EntropyCoding::PartLevel &rhs)
+    : split(static_cast<PartSplit>(rhs.split))
+    , idx(rhs.idx)
+    , checkdIfImplicit(rhs.checkdIfImplicit)
+    , isImplicit(rhs.isImplicit)
+    , implicitSplit(static_cast<PartSplit>(rhs.implicitSplit))
+    , firstSubPartSplit(static_cast<PartSplit>(rhs.firstSubPartSplit))
+    , canQtSplit(rhs.canQtSplit)
+    , qgEnable(rhs.qgEnable)
+    , qgChromaEnable(rhs.qgChromaEnable)
+    , modeType(rhs.modeType)
+  {
+    parts.resize(rhs.parts.size());
+    std::copy(rhs.parts.begin(), rhs.parts.end(), parts.begin());
+  }
+
+  operator EntropyCoding::PartLevel() const
+  {
+    EntropyCoding::Partitioning _parts(parts.size());
+    std::copy(parts.begin(), parts.end(), _parts.begin());
+
+    return EntropyCoding::PartLevel(static_cast<EntropyCoding::PartSplit>(split), std::move(_parts), idx,
+                                    checkdIfImplicit, isImplicit, static_cast<EntropyCoding::PartSplit>(implicitSplit),
+                                    static_cast<EntropyCoding::PartSplit>(firstSubPartSplit), canQtSplit, qgEnable,
+                                    qgChromaEnable, modeType);
+  }
+#endif
 };
 
 // set depending on max QT / BT possibilities
@@ -128,6 +161,27 @@ public:
   ModeType modeType;
 
   virtual ~Partitioner                    () { }
+#ifdef STANDALONE_ENTROPY_CODEC
+  virtual operator EntropyCoding::Partitioner *() const = 0;
+
+  const Partitioner &operator=(const EntropyCoding::Partitioner &rhs)
+  {
+    m_partStack         = rhs.getPartStack();
+    currDepth           = rhs.currDepth;
+    currQtDepth         = rhs.currQtDepth;
+    currTrDepth         = rhs.currTrDepth;
+    currBtDepth         = rhs.currBtDepth;
+    currMtDepth         = rhs.currMtDepth;
+    currSubdiv          = rhs.currSubdiv;
+    currQgPos           = rhs.currQgPos;
+    currQgChromaPos     = rhs.currQgChromaPos;
+    currImplicitBtDepth = rhs.currImplicitBtDepth;
+    chType              = static_cast<ChannelType>(rhs.chType);
+    treeType            = static_cast<TreeType>(rhs.treeType);
+    modeType            = static_cast<ModeType>(rhs.modeType);
+    return *this;
+  }
+#endif
 
   const PartLevel& currPartLevel          () const { return m_partStack.back(); }
   const UnitArea&  currArea               () const { return currPartLevel().parts[currPartIdx()]; }
@@ -169,6 +223,16 @@ public:
 class QTBTPartitioner : public AdaptiveDepthPartitioner
 {
 public:
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::Partitioner*() const
+  {
+    return new EntropyCoding::QTBTPartitioner(
+      m_partStack, currDepth, currQtDepth, currTrDepth, currBtDepth, currMtDepth, currSubdiv, currQgPos,
+      currQgChromaPos, currImplicitBtDepth, static_cast<EntropyCoding::ChannelType>(chType),
+      static_cast<EntropyCoding::TreeType>(treeType), static_cast<EntropyCoding::ModeType>(modeType));
+  }
+#endif
+
   void initCtu                    ( const UnitArea& ctuArea, const ChannelType _chType, const Slice& slice );
   void splitCurrArea              ( const PartSplit split, const CodingStructure &cs );
   void exitCurrSplit              ();
@@ -201,6 +265,16 @@ public:
     treeType     = _initialState.treeType;
     modeType     = _initialState.modeType;
   }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::Partitioner*() const
+  {
+    return new EntropyCoding::TUIntraSubPartitioner(
+      m_partStack, currDepth, currQtDepth, currTrDepth, currBtDepth, currMtDepth, currSubdiv, currQgPos,
+      currQgChromaPos, currImplicitBtDepth, static_cast<EntropyCoding::ChannelType>(chType),
+      static_cast<EntropyCoding::TreeType>(treeType), static_cast<EntropyCoding::ModeType>(modeType));
+  }
+#endif
 
   void initCtu               (const UnitArea& ctuArea, const ChannelType chType, const Slice& slice) {}; // not needed
   void splitCurrArea         (const PartSplit split, const CodingStructure &cs);
