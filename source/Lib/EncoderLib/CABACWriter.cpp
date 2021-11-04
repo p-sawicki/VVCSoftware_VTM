@@ -2918,15 +2918,16 @@ void CABACWriter::residual_coding( const TransformUnit& tu, ComponentID compID, 
 {
 #ifdef STANDALONE_ENTROPY_CODEC
   EntropyCoding::CodingStructure cs     = *tu.cs;
-  EntropyCoding::CUCtx *         _cuCtx = nullptr;
+  EntropyCoding::CUCtx           _cuCtx;
   if (cuCtx)
   {
-    *_cuCtx = *cuCtx;
+    _cuCtx = *cuCtx;
   }
-  m_cabacWriter.residual_coding(*cs.tus[tu.idx - 1], static_cast<EntropyCoding::ComponentID>(compID), _cuCtx);
+  m_cabacWriter.residual_coding(*cs.tus[tu.idx - 1], static_cast<EntropyCoding::ComponentID>(compID),
+                                cuCtx ? &_cuCtx : nullptr);
   if (cuCtx)
   {
-    *cuCtx = *_cuCtx;
+    *cuCtx = _cuCtx;
   }
 #else
   const CodingUnit& cu = *tu.cu;
@@ -3040,16 +3041,16 @@ void CABACWriter::ts_flag( const TransformUnit& tu, ComponentID compID )
 void CABACWriter::mts_idx( const CodingUnit& cu, CUCtx* cuCtx )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs     = *cu.cs;
-  EntropyCoding::CUCtx *         _cuCtx = nullptr;
+  EntropyCoding::CodingStructure cs = *cu.cs;
+  EntropyCoding::CUCtx           _cuCtx;
   if (cuCtx)
   {
-    *_cuCtx = *cuCtx;
+    _cuCtx = *cuCtx;
   }
-  m_cabacWriter.mts_idx(*cs.cus[cu.idx - 1], _cuCtx);
+  m_cabacWriter.mts_idx(*cs.cus[cu.idx - 1], cuCtx ? &_cuCtx : nullptr);
   if (cuCtx)
   {
-    *cuCtx = *_cuCtx;
+    *cuCtx = _cuCtx;
   }
 #else
   TransformUnit &tu = *cu.firstTU;
@@ -3690,15 +3691,16 @@ void CABACWriter::exp_golomb_eqprob( unsigned symbol, unsigned count )
 void CABACWriter::codeAlfCtuEnableFlags( const CodingStructure& cs, ChannelType channel, AlfParam* alfParam)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::AlfParam *_alfParam = nullptr;
+  EntropyCoding::AlfParam _alfParam;
   if (alfParam)
   {
-    *_alfParam = *alfParam;
+    _alfParam = *alfParam;
   }
-  m_cabacWriter.codeAlfCtuEnableFlags(cs, static_cast<EntropyCoding::ChannelType>(channel), _alfParam);
+  m_cabacWriter.codeAlfCtuEnableFlags(cs, static_cast<EntropyCoding::ChannelType>(channel),
+                                      alfParam ? &_alfParam : nullptr);
   if (alfParam)
   {
-    *alfParam = *_alfParam;
+    *alfParam = _alfParam;
   }
 #else
   if( isLuma( channel ) )
@@ -3734,15 +3736,15 @@ void CABACWriter::codeAlfCtuEnableFlags( const CodingStructure& cs, ComponentID 
 void CABACWriter::codeAlfCtuEnableFlag( const CodingStructure& cs, uint32_t ctuRsAddr, const int compIdx, AlfParam* alfParam)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::AlfParam *_alfParam = nullptr;
+  EntropyCoding::AlfParam _alfParam;
   if (alfParam)
   {
-    *_alfParam = *alfParam;
+    _alfParam = *alfParam;
   }
-  m_cabacWriter.codeAlfCtuEnableFlag(cs, ctuRsAddr, compIdx, _alfParam);
+  m_cabacWriter.codeAlfCtuEnableFlag(cs, ctuRsAddr, compIdx, alfParam ? &_alfParam : nullptr);
   if (alfParam)
   {
-    *alfParam = *_alfParam;
+    *alfParam = _alfParam;
   }
 #else
   const bool alfComponentEnabled = (alfParam != NULL) ? alfParam->enabledFlag[compIdx] : cs.slice->getAlfEnabledFlag((ComponentID)compIdx);
@@ -3930,15 +3932,16 @@ void CABACWriter::codeAlfCtuFilterIndex(const CodingStructure& cs, uint32_t ctuR
 void CABACWriter::codeAlfCtuAlternatives( const CodingStructure& cs, ChannelType channel, AlfParam* alfParam)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::AlfParam *_alfParam = nullptr;
+  EntropyCoding::AlfParam _alfParam;
   if (alfParam)
   {
-    *_alfParam = *alfParam;
+    _alfParam = *alfParam;
   }
-  m_cabacWriter.codeAlfCtuAlternatives(cs, static_cast<EntropyCoding::ChannelType>(channel), _alfParam);
+  m_cabacWriter.codeAlfCtuAlternatives(cs, static_cast<EntropyCoding::ChannelType>(channel),
+                                       alfParam ? &_alfParam : nullptr);
   if (alfParam)
   {
-    *alfParam = *_alfParam;
+    *alfParam = _alfParam;
   }
 #else
   if( isChroma( channel ) )
@@ -3976,12 +3979,12 @@ void CABACWriter::codeAlfCtuAlternatives( const CodingStructure& cs, ComponentID
 void CABACWriter::codeAlfCtuAlternative( const CodingStructure& cs, uint32_t ctuRsAddr, const int compIdx, const AlfParam* alfParam)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::AlfParam *_alfParam = nullptr;
+  EntropyCoding::AlfParam _alfParam;
   if (alfParam)
   {
-    *_alfParam = *alfParam;
+    _alfParam = *alfParam;
   }
-  m_cabacWriter.codeAlfCtuAlternative(cs, ctuRsAddr, compIdx, _alfParam);
+  m_cabacWriter.codeAlfCtuAlternative(cs, ctuRsAddr, compIdx, alfParam ? &_alfParam : nullptr);
 #else
   if( compIdx == COMPONENT_Y )
   {

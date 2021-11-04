@@ -2912,7 +2912,7 @@ public:
   {
     std::array<EntropyCoding::APS *, ALF_CTB_MAX_NUM_APS> apss;
     std::transform(m_alfApss, m_alfApss + ALF_CTB_MAX_NUM_APS, apss.begin(),
-                   [](APS *aps) { return new EntropyCoding::APS(*aps); });
+                   [](APS *aps) { return aps ? new EntropyCoding::APS(*aps) : nullptr; });
 
     EntropyCoding::WeightPredTable table;
     for (int i = 0; i < table.size(); ++i)

@@ -73,6 +73,7 @@ struct Picture : public UnitArea
     EntropyCoding::Picture result;
     for (int i = 0; i < 2; ++i)
     {
+      result.m_sao[i].resize(m_sao[i].size());
       std::copy(m_sao[i].begin(), m_sao[i].end(), result.m_sao[i].begin());
     }
     EntropyCoding::copy_array(m_alfCtuEnableFlag, result.m_alfCtuEnableFlag);

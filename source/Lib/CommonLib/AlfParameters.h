@@ -153,7 +153,7 @@ struct AlfParam
   operator EntropyCoding::AlfParam() const
   {
     EntropyCoding::AlfParam result;
-    std::copy(enabledFlag, enabledFlag + MAX_NUM_COMPONENT, result.enabledFlag.begin());
+    EntropyCoding::copy_array(enabledFlag, result.enabledFlag);
     result.numAlternativesChroma = numAlternativesChroma;
     return result;
   }
