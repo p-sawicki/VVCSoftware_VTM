@@ -66,6 +66,10 @@ endif()
 target_include_directories( ${LIB_NAME} PUBLIC . .. ./x86 ../libmd5 )
 target_link_libraries( ${LIB_NAME} LogLib)
 
+if( ENABLE_LOGGING )
+  target_compile_definitions( ${LIB_NAME} PUBLIC ENABLE_LOGGING=1)
+endif()
+
 # set needed compile definitions
 set_property( SOURCE ${SSE41_SRC_FILES} APPEND PROPERTY COMPILE_DEFINITIONS USE_SSE41 )
 set_property( SOURCE ${SSE42_SRC_FILES} APPEND PROPERTY COMPILE_DEFINITIONS USE_SSE42 )

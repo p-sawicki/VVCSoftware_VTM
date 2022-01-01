@@ -44,6 +44,8 @@
 #include "CommonLib/dtrace_next.h"
 #include "CommonLib/Picture.h"
 
+#include "log.h"
+
 #if RExt__DECODER_DEBUG_BIT_STATISTICS
 #include "CommonLib/CodingStatistics.h"
 #endif
@@ -176,6 +178,7 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
 
         RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET(STATS__CABAC_BITS__ALF);
         ctbAlfFlag[ctuRsAddr] = m_BinDecoder.decodeBin( Ctx::ctbAlfFlag( compIdx * 3 + ctx ) );
+        binLogger.LogElements(SyntaxElement::alf_ctb_flag, ctbAlfFlag[ctuRsAddr]);
 
         if (isLuma((ComponentID)compIdx) && ctbAlfFlag[ctuRsAddr])
         {
@@ -192,8 +195,10 @@ void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
           if( ctbAlfFlag[ctuRsAddr] )
           {
             uint8_t decoded = 0;
-            while( decoded < numAlts-1 && m_BinDecoder.decodeBin( Ctx::ctbAlfAlternative( compIdx-1 ) ) )
+            while( decoded < numAlts-1 && m_BinDecoder.decodeBin( Ctx::ctbAlfAlternative( compIdx-1 ) ) ) {
               ++ decoded;
+              binLogger.LogElement(SyntaxElement::alf_ctb_filter_alt_idx);
+            }
             ctbAlfAlternative[ctuRsAddr] = decoded;
           }
         }
@@ -255,22 +260,26 @@ void CABACReader::readAlfCtuFilterIndex(CodingStructure& cs, unsigned ctuRsAddr)
   if (numAvailableFiltSets > NUM_FIXED_FILTER_SETS)
   {
     unsigned usePrevFilt = m_BinDecoder.decodeBin(Ctx::AlfUseTemporalFilt());
+    binLogger.LogElements(SyntaxElement::alf_use_aps_flag, usePrevFilt);
     if (usePrevFilt)
     {
       if (numAps > 1)
       {
         xReadTruncBinCode(filtIndex, numAvailableFiltSets - NUM_FIXED_FILTER_SETS);
+        binLogger.LogElements(SyntaxElement::alf_luma_fixed_filter_idx, filtIndex);
       }
       filtIndex += (unsigned)(NUM_FIXED_FILTER_SETS);
     }
     else
     {
       xReadTruncBinCode(filtIndex, NUM_FIXED_FILTER_SETS);
+      binLogger.LogElements(SyntaxElement::alf_luma_fixed_filter_idx, filtIndex);
     }
   }
   else
   {
     xReadTruncBinCode(filtIndex, NUM_FIXED_FILTER_SETS);
+    binLogger.LogElements(SyntaxElement::alf_luma_fixed_filter_idx, filtIndex);
   }
   alfCtbFilterSetIndex[ctuRsAddr] = filtIndex;
 }
@@ -298,10 +307,12 @@ void CABACReader::ccAlfFilterControlIdc(CodingStructure &cs, const ComponentID c
   ctxt += ( compID == COMPONENT_Cr ) ? 3 : 0;
 
   int idcVal  = m_BinDecoder.decodeBin( Ctx::CcAlfFilterControlFlag( ctxt ) );
+  binLogger.LogElements(SyntaxElement::alf_ctb_filter_alt_idx, idcVal);
   if ( idcVal )
   {
     while ( ( idcVal != filterCount ) && m_BinDecoder.decodeBinEP() )
     {
+      binLogger.LogElement(SyntaxElement::alf_ctb_filter_alt_idx);
       idcVal++;
     }
   }
@@ -353,12 +364,14 @@ void CABACReader::sao( CodingStructure& cs, unsigned ctuRsAddr )
   {
     // sao_merge_left_flag
     sao_merge_type  += int( m_BinDecoder.decodeBin( Ctx::SaoMergeFlag() ) );
+    binLogger.LogElements(SyntaxElement::sao_merge_left_flag, sao_merge_type);
   }
 
   if( sao_merge_type < 0 && cs.getCURestricted( pos.offset(0, -(int)cs.pcv->maxCUHeight), pos, curSliceIdx, curTileIdx, CH_L ) )
   {
     // sao_merge_above_flag
     sao_merge_type  += int( m_BinDecoder.decodeBin( Ctx::SaoMergeFlag() ) ) << 1;
+    binLogger.LogElements(SyntaxElement::sao_merge_up_flag, sao_merge_type);
   }
   if( sao_merge_type >= 0 )
   {
@@ -389,15 +402,18 @@ void CABACReader::sao( CodingStructure& cs, unsigned ctuRsAddr )
     {
       if( m_BinDecoder.decodeBin( Ctx::SaoTypeIdx() ) )
       {
+        binLogger.LogElement(SyntaxElement::sao_type_idx_luma);
         if( m_BinDecoder.decodeBinEP( ) )
         {
           // edge offset
+          binLogger.LogElements(SyntaxElement::sao_type_idx_luma, 1);
           sao_pars.modeIdc = SAO_MODE_NEW;
           sao_pars.typeIdc = SAO_TYPE_START_EO;
         }
         else
         {
           // band offset
+          binLogger.LogElements(SyntaxElement::sao_type_idx_luma, 0);
           sao_pars.modeIdc = SAO_MODE_NEW;
           sao_pars.typeIdc = SAO_TYPE_START_BO;
         }
@@ -405,6 +421,7 @@ void CABACReader::sao( CodingStructure& cs, unsigned ctuRsAddr )
     }
     else //Cr, follow Cb SAO type
     {
+      binLogger.LogElement(SyntaxElement::sao_type_idx_chroma);
       sao_pars.modeIdc = sao_ctu_pars[ COMPONENT_Cb ].modeIdc;
       sao_pars.typeIdc = sao_ctu_pars[ COMPONENT_Cb ].typeIdc;
     }
@@ -420,6 +437,7 @@ void CABACReader::sao( CodingStructure& cs, unsigned ctuRsAddr )
     offset    [1]           = (int)unary_max_eqprob( maxOffsetQVal );
     offset    [2]           = (int)unary_max_eqprob( maxOffsetQVal );
     offset    [3]           = (int)unary_max_eqprob( maxOffsetQVal );
+    binLogger.LogElements(SyntaxElement::sao_offset_abs, offset[0], offset[1], offset[2], offset[3]);
 
     // band offset mode
     if( sao_pars.typeIdc == SAO_TYPE_START_BO )
@@ -429,11 +447,13 @@ void CABACReader::sao( CodingStructure& cs, unsigned ctuRsAddr )
       {
         if( offset[k] && m_BinDecoder.decodeBinEP( ) )
         {
+          binLogger.LogElement(SyntaxElement::sao_offset_sign_flag);
           offset[k] = -offset[k];
         }
       }
       // sao_band_position
       sao_pars.typeAuxInfo = m_BinDecoder.decodeBinsEP( NUM_SAO_BO_CLASSES_LOG2 );
+      binLogger.LogElements(SyntaxElement::sao_band_position, sao_pars.typeAuxInfo);
       for( int k = 0; k < 4; k++ )
       {
         sao_pars.offset[ ( sao_pars.typeAuxInfo + k ) % MAX_NUM_SAO_CLASSES ] = offset[k];
@@ -447,6 +467,7 @@ void CABACReader::sao( CodingStructure& cs, unsigned ctuRsAddr )
     {
       // sao_eo_class_luma / sao_eo_class_chroma
       sao_pars.typeIdc += m_BinDecoder.decodeBinsEP( NUM_SAO_EO_TYPES_LOG2 );
+      binLogger.LogElement(SyntaxElement::sao_type_idx_luma);
     }
     else
     {
@@ -722,6 +743,7 @@ ModeType CABACReader::mode_constraint( CodingStructure& cs, Partitioner &partiti
     int ctxIdx = DeriveCtx::CtxModeConsFlag( cs, partitioner );
     RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE2( STATS__CABAC_BITS__MODE_CONSTRAINT_FLAG, partitioner.currArea().blocks[partitioner.chType].size(), partitioner.chType );
     bool flag = m_BinDecoder.decodeBin( Ctx::ModeConsFlag( ctxIdx ) );
+    binLogger.LogElements(SyntaxElement::non_inter_flag, flag);
     DTRACE( g_trace_ctx, D_SYNTAX, "mode_cons_flag() flag=%d\n", flag );
     return flag ? MODE_TYPE_INTRA : MODE_TYPE_INTER;
   }
@@ -754,6 +776,7 @@ PartSplit CABACReader::split_cu_mode( CodingStructure& cs, Partitioner &partitio
   if( canNo && isSplit )
   {
     isSplit = m_BinDecoder.decodeBin( Ctx::SplitFlag( ctxSplit ) );
+    binLogger.LogElements(SyntaxElement::split_cu_flag, isSplit);
   }
 
   DTRACE( g_trace_ctx, D_SYNTAX, "split_cu_mode() ctx=%d split=%d\n", ctxSplit, isSplit );
@@ -769,6 +792,7 @@ PartSplit CABACReader::split_cu_mode( CodingStructure& cs, Partitioner &partitio
   if( isQt && canBtt )
   {
     isQt = m_BinDecoder.decodeBin( Ctx::SplitQtFlag( ctxQtSplit ) );
+    binLogger.LogElements(SyntaxElement::split_qt_flag, isQt);
   }
 
   DTRACE( g_trace_ctx, D_SYNTAX, "split_cu_mode() ctx=%d qt=%d\n", ctxQtSplit, isQt );
@@ -784,6 +808,7 @@ PartSplit CABACReader::split_cu_mode( CodingStructure& cs, Partitioner &partitio
   if( isVer && canHor )
   {
     isVer = m_BinDecoder.decodeBin( Ctx::SplitHvFlag( ctxBttHV ) );
+    binLogger.LogElements(SyntaxElement::mtt_split_cu_vertical_flag, isVer);
   }
 
   const bool can14 = isVer ? canTv : canTh;
@@ -792,6 +817,7 @@ PartSplit CABACReader::split_cu_mode( CodingStructure& cs, Partitioner &partitio
   if( is12 && can14 )
   {
     is12 = m_BinDecoder.decodeBin( Ctx::Split12Flag( isVer ? ctxBttV12 : ctxBttH12 ) );
+    binLogger.LogElements(SyntaxElement::mtt_split_cu_binary_flag, is12);
   }
 
   if (isVer && is12)
@@ -917,6 +943,7 @@ void CABACReader::cu_skip_flag( CodingUnit& cu )
     {
       unsigned ctxId = DeriveCtx::CtxSkipFlag(cu);
       unsigned skip  = m_BinDecoder.decodeBin(Ctx::SkipFlag(ctxId));
+      binLogger.LogElements(SyntaxElement::cu_skip_flag, skip);
       DTRACE(g_trace_ctx, D_SYNTAX, "cu_skip_flag() ctx=%d skip=%d\n", ctxId, skip ? 1 : 0);
       if (skip)
       {
@@ -938,6 +965,7 @@ void CABACReader::cu_skip_flag( CodingUnit& cu )
   }
   unsigned ctxId  = DeriveCtx::CtxSkipFlag(cu);
   unsigned skip   = m_BinDecoder.decodeBin( Ctx::SkipFlag(ctxId) );
+  binLogger.LogElements(SyntaxElement::cu_skip_flag, skip);
 
   DTRACE( g_trace_ctx, D_SYNTAX, "cu_skip_flag() ctx=%d skip=%d\n", ctxId, skip ? 1 : 0 );
 
@@ -956,6 +984,7 @@ void CABACReader::cu_skip_flag( CodingUnit& cu )
       unsigned ctxidx = DeriveCtx::CtxIBCFlag(cu);
       if (m_BinDecoder.decodeBin(Ctx::IBCFlag(ctxidx)))
       {
+        binLogger.LogElement(SyntaxElement::pred_mode_ibc_flag);
         cu.skip                      = true;
         cu.rootCbf                   = false;
         cu.predMode                  = MODE_IBC;
@@ -1012,6 +1041,7 @@ void CABACReader::imv_mode( CodingUnit& cu, MergeCtx& mrgCtx )
   else
   {
     value = m_BinDecoder.decodeBin(Ctx::ImvFlag(0));
+    binLogger.LogElements(SyntaxElement::amvr_flag, value);
   }
   DTRACE( g_trace_ctx, D_SYNTAX, "imv_mode() value=%d ctx=%d\n", value, 0 );
 
@@ -1021,12 +1051,14 @@ void CABACReader::imv_mode( CodingUnit& cu, MergeCtx& mrgCtx )
     if (!CU::isIBC(cu))
     {
       value = m_BinDecoder.decodeBin(Ctx::ImvFlag(4));
+      binLogger.LogElements(SyntaxElement::amvr_precision_idx, value);
       DTRACE(g_trace_ctx, D_SYNTAX, "imv_mode() value=%d ctx=%d\n", value, 4);
       cu.imv = value ? 1 : IMV_HPEL;
     }
     if (value)
     {
       value = m_BinDecoder.decodeBin(Ctx::ImvFlag(1));
+      binLogger.LogElements(SyntaxElement::amvr_precision_idx, value);
       DTRACE(g_trace_ctx, D_SYNTAX, "imv_mode() value=%d ctx=%d\n", value, 1);
       value++;
       cu.imv = value;
@@ -1054,11 +1086,13 @@ void CABACReader::affine_amvr_mode( CodingUnit& cu, MergeCtx& mrgCtx )
 
   unsigned value = 0;
   value = m_BinDecoder.decodeBin( Ctx::ImvFlag( 2 ) );
+  binLogger.LogElements(SyntaxElement::amvr_flag, value);
   DTRACE( g_trace_ctx, D_SYNTAX, "affine_amvr_mode() value=%d ctx=%d\n", value, 2 );
 
   if( value )
   {
     value = m_BinDecoder.decodeBin( Ctx::ImvFlag( 3 ) );
+    binLogger.LogElements(SyntaxElement::amvr_precision_idx, value);
     DTRACE( g_trace_ctx, D_SYNTAX, "affine_amvr_mode() value=%d ctx=%d\n", value, 3 );
     value++;
   }
@@ -1086,6 +1120,7 @@ void CABACReader::pred_mode( CodingUnit& cu )
         unsigned ctxidx = DeriveCtx::CtxIBCFlag(cu);
         if (m_BinDecoder.decodeBin(Ctx::IBCFlag(ctxidx)))
         {
+          binLogger.LogElement(SyntaxElement::pred_mode_ibc_flag);
           cu.predMode = MODE_IBC;
         }
       }
@@ -1093,6 +1128,7 @@ void CABACReader::pred_mode( CodingUnit& cu )
       {
         if (m_BinDecoder.decodeBin(Ctx::PLTFlag(0)))
         {
+          binLogger.LogElement(SyntaxElement::pred_mode_plt_flag);
           cu.predMode = MODE_PLT;
         }
       }
@@ -1101,11 +1137,13 @@ void CABACReader::pred_mode( CodingUnit& cu )
     {
       if (m_BinDecoder.decodeBin(Ctx::PredMode(DeriveCtx::CtxPredModeFlag(cu))))
       {
+        binLogger.LogElement(SyntaxElement::pred_mode_flag);
         cu.predMode = MODE_INTRA;
         if (cu.cs->slice->getSPS()->getPLTMode() && cu.lwidth() <= 64 && cu.lheight() <= 64 && (cu.lumaSize().width * cu.lumaSize().height > 16) )
         {
           if (m_BinDecoder.decodeBin(Ctx::PLTFlag(0)))
           {
+            binLogger.LogElement(SyntaxElement::pred_mode_plt_flag);
             cu.predMode = MODE_PLT;
           }
         }
@@ -1118,6 +1156,7 @@ void CABACReader::pred_mode( CodingUnit& cu )
           unsigned ctxidx = DeriveCtx::CtxIBCFlag(cu);
           if (m_BinDecoder.decodeBin(Ctx::IBCFlag(ctxidx)))
           {
+            binLogger.LogElement(SyntaxElement::pred_mode_ibc_flag);
             cu.predMode = MODE_IBC;
           }
         }
@@ -1139,6 +1178,7 @@ void CABACReader::pred_mode( CodingUnit& cu )
       {
         if (m_BinDecoder.decodeBin(Ctx::PLTFlag(0)))
         {
+          binLogger.LogElement(SyntaxElement::pred_mode_plt_flag);
           cu.predMode = MODE_PLT;
         }
       }
@@ -1146,10 +1186,12 @@ void CABACReader::pred_mode( CodingUnit& cu )
     else
     {
       cu.predMode = m_BinDecoder.decodeBin(Ctx::PredMode(DeriveCtx::CtxPredModeFlag(cu))) ? MODE_INTRA : MODE_INTER;
+      binLogger.LogElements(SyntaxElement::pred_mode_flag, cu.predMode);
       if (CU::isIntra(cu) && cu.cs->slice->getSPS()->getPLTMode() && cu.lwidth() <= 64 &&  cu.lheight() <= 64 && ( ( (!isLuma(cu.chType)) && (cu.chromaSize().width * cu.chromaSize().height > 16) ) || ((isLuma(cu.chType)) && ((cu.lumaSize().width * cu.lumaSize().height) > 16 ) )  ) && (!cu.isLocalSepTree() || isLuma(cu.chType)  )  )
       {
         if (m_BinDecoder.decodeBin(Ctx::PLTFlag(0)))
         {
+          binLogger.LogElement(SyntaxElement::pred_mode_plt_flag);
           cu.predMode = MODE_PLT;
         }
       }
@@ -1181,9 +1223,14 @@ void CABACReader::bdpcm_mode( CodingUnit& cu, const ComponentID compID )
   int bdpcmMode;
   unsigned ctxId = isLuma( compID ) ? 0 : 2;
   bdpcmMode = m_BinDecoder.decodeBin( Ctx::BDPCMMode(ctxId) );
+  binLogger.LogElements(isLuma(compID) ? SyntaxElement::intra_bdpcm_luma_flag
+                                       : SyntaxElement::intra_bdpcm_chroma_flag, bdpcmMode);
   if (bdpcmMode)
   {
     bdpcmMode += m_BinDecoder.decodeBin( Ctx::BDPCMMode(ctxId+1) );
+    binLogger.LogElement(isLuma(compID)
+                              ? SyntaxElement::intra_bdpcm_luma_dir_flag
+                              : SyntaxElement::intra_bdpcm_chroma_dir_flag);
   }
   if (isLuma(compID))
   {
@@ -1250,6 +1297,7 @@ void CABACReader::cu_bcw_flag(CodingUnit& cu)
   uint32_t idx = 0;
 
   uint32_t symbol = m_BinDecoder.decodeBin(Ctx::BcwIdx(0));
+  binLogger.LogElements(SyntaxElement::bcw_idx, symbol);
 
   int32_t numBcw = (cu.slice->getCheckLDC()) ? 5 : 3;
   if(symbol == 1)
@@ -1262,6 +1310,7 @@ void CABACReader::cu_bcw_flag(CodingUnit& cu)
     for(int ui = 0; ui < prefixNumBits; ++ui)
     {
       symbol = m_BinDecoder.decodeBinEP();
+      binLogger.LogElements(SyntaxElement::bcw_idx, symbol);
       if (symbol == 0)
       {
         break;
@@ -1339,9 +1388,11 @@ void CABACReader::extend_ref_line(CodingUnit& cu)
     if (MRL_NUM_REF_LINES > 1)
     {
       multiRefIdx = m_BinDecoder.decodeBin(Ctx::MultiRefLineIdx(0)) == 1 ? MULTI_REF_LINE_IDX[1] : MULTI_REF_LINE_IDX[0];
+      binLogger.LogElements(SyntaxElement::ref_idx_l0, multiRefIdx);
       if (MRL_NUM_REF_LINES > 2 && multiRefIdx != MULTI_REF_LINE_IDX[0])
       {
         multiRefIdx = m_BinDecoder.decodeBin(Ctx::MultiRefLineIdx(1)) == 1 ? MULTI_REF_LINE_IDX[2] : MULTI_REF_LINE_IDX[1];
+        binLogger.LogElements(SyntaxElement::ref_idx_l1, multiRefIdx);
       }
 
     }
@@ -1387,6 +1438,7 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
     else
     {
       mpmFlag[k] = m_BinDecoder.decodeBin(Ctx::IntraLumaMpmFlag());
+      binLogger.LogElements(SyntaxElement::intra_luma_mpm_flag, mpmFlag[k]);
     }
   }
 
@@ -1405,6 +1457,7 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
         if (pu->multiRefIdx == 0)
         {
           ipred_idx = m_BinDecoder.decodeBin(Ctx::IntraLumaPlanarFlag(ctx));
+          binLogger.LogElements(SyntaxElement::intra_luma_not_planar_flag, ipred_idx);
         }
         else
         {
@@ -1413,18 +1466,22 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
         if( ipred_idx )
         {
           ipred_idx += m_BinDecoder.decodeBinEP();
+          binLogger.LogElement(SyntaxElement::intra_luma_mpm_idx);
         }
         if (ipred_idx > 1)
         {
           ipred_idx += m_BinDecoder.decodeBinEP();
+          binLogger.LogElement(SyntaxElement::intra_luma_mpm_idx);
         }
         if (ipred_idx > 2)
         {
           ipred_idx += m_BinDecoder.decodeBinEP();
+          binLogger.LogElement(SyntaxElement::intra_luma_mpm_idx);
         }
         if (ipred_idx > 3)
         {
           ipred_idx += m_BinDecoder.decodeBinEP();
+          binLogger.LogElement(SyntaxElement::intra_luma_mpm_idx);
         }
       }
       pu->intraDir[0] = mpm_pred[ipred_idx];
@@ -1434,6 +1491,7 @@ void CABACReader::intra_luma_pred_modes( CodingUnit &cu )
       unsigned ipred_mode = 0;
 
       xReadTruncBinCode(ipred_mode, NUM_LUMA_MODE - NUM_MOST_PROBABLE_MODES);
+      binLogger.LogElements(SyntaxElement::intra_luma_mpm_remainder, ipred_mode);
       //postponed sorting of MPMs (only in remaining branch)
       std::sort( mpm_pred, mpm_pred + NUM_MOST_PROBABLE_MODES );
 
@@ -1474,6 +1532,7 @@ bool CABACReader::intra_chroma_lmc_mode(PredictionUnit& pu)
   PU::getLMSymbolList(pu, lmModeList);
 
   int symbol = m_BinDecoder.decodeBin(Ctx::CclmModeIdx(0));
+  binLogger.LogElements(SyntaxElement::cclm_mode_idx, symbol);
 
   if (symbol == 0)
   {
@@ -1483,6 +1542,7 @@ bool CABACReader::intra_chroma_lmc_mode(PredictionUnit& pu)
   else
   {
     symbol += m_BinDecoder.decodeBinEP();
+    binLogger.LogElement(SyntaxElement::cclm_mode_idx);
     pu.intraDir[1] = lmModeList[symbol];
   }
   return true; //it will only enter this function for LMC modes, so always return true ;
@@ -1502,6 +1562,7 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
   if (pu.cs->sps->getUseLMChroma() && pu.cu->checkCCLMAllowed())
   {
     bool isLMCMode = m_BinDecoder.decodeBin(Ctx::CclmModeFlag(0)) ? true : false;
+    binLogger.LogElements(SyntaxElement::cclm_mode_flag, isLMCMode);
     if (isLMCMode)
     {
       intra_chroma_lmc_mode(pu);
@@ -1511,11 +1572,13 @@ void CABACReader::intra_chroma_pred_mode(PredictionUnit& pu)
 
   if (m_BinDecoder.decodeBin(Ctx::IntraChromaPredMode(0)) == 0)
   {
+    binLogger.LogElement(SyntaxElement::intra_chroma_pred_mode);
     pu.intraDir[1] = DM_CHROMA_IDX;
     return;
   }
 
   unsigned candId = m_BinDecoder.decodeBinsEP(2);
+  binLogger.LogElements(SyntaxElement::intra_chroma_pred_mode, candId);
 
   unsigned chromaCandModes[NUM_CHROMA_MODE];
   PU::getIntraChromaCandModes(pu, chromaCandModes);
@@ -1583,6 +1646,7 @@ void CABACReader::rqt_root_cbf( CodingUnit& cu )
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET( STATS__CABAC_BITS__QT_ROOT_CBF );
 
   cu.rootCbf = ( m_BinDecoder.decodeBin( Ctx::QtRootCbf() ) );
+  binLogger.LogElements(SyntaxElement::cu_coded_flag, cu.rootCbf);
 
   DTRACE( g_trace_ctx, D_SYNTAX, "rqt_root_cbf() ctx=0 root_cbf=%d pos=(%d,%d)\n", cu.rootCbf ? 1 : 0, cu.lumaPos().x, cu.lumaPos().y );
 }
@@ -1603,6 +1667,7 @@ void CABACReader::adaptive_color_transform(CodingUnit& cu)
   {
     RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET( STATS__CABAC_BITS__ACT );
     cu.colorTransform = (m_BinDecoder.decodeBin(Ctx::ACTFlag()));
+    binLogger.LogElements(SyntaxElement::cu_act_enabled_flag, cu.colorTransform);
   }
 }
 
@@ -1621,6 +1686,7 @@ void CABACReader::sbt_mode( CodingUnit& cu )
   //bin - flag
   uint8_t ctxIdx = ( cuWidth * cuHeight <= 256 ) ? 1 : 0;
   bool sbtFlag = m_BinDecoder.decodeBin( Ctx::SbtFlag( ctxIdx ) );
+  binLogger.LogElements(SyntaxElement::cu_sbt_flag, sbtFlag);
   if( !sbtFlag )
   {
     return;
@@ -1636,6 +1702,7 @@ void CABACReader::sbt_mode( CodingUnit& cu )
   if( ( sbtHorHalfAllow || sbtVerHalfAllow ) && ( sbtHorQuadAllow || sbtVerQuadAllow ) )
   {
     sbtQuadFlag = m_BinDecoder.decodeBin( Ctx::SbtQuadFlag( 0 ) );
+    binLogger.LogElements(SyntaxElement::cu_sbt_quad_flag, sbtQuadFlag);
   }
   else
   {
@@ -1648,6 +1715,7 @@ void CABACReader::sbt_mode( CodingUnit& cu )
   {
     uint8_t ctxIdx = ( cuWidth == cuHeight ) ? 0 : ( cuWidth < cuHeight ? 1 : 2 );
     sbtHorFlag = m_BinDecoder.decodeBin( Ctx::SbtHorFlag( ctxIdx ) );
+    binLogger.LogElements(SyntaxElement::cu_sbt_horizontal_flag, sbtHorFlag);
   }
   else
   {
@@ -1657,6 +1725,7 @@ void CABACReader::sbt_mode( CodingUnit& cu )
 
   //bin - pos
   bool sbtPosFlag = m_BinDecoder.decodeBin( Ctx::SbtPosFlag( 0 ) );
+  binLogger.LogElements(SyntaxElement::cu_sbt_pos_flag, sbtPosFlag);
   cu.setSbtPos( sbtPosFlag ? SBT_POS1 : SBT_POS0 );
 
   DTRACE( g_trace_ctx, D_SYNTAX, "sbt_mode() pos=(%d,%d) sbtInfo=%d\n", cu.lx(), cu.ly(), (int)cu.sbtInfo );
@@ -1720,6 +1789,7 @@ void CABACReader::cu_palette_info(CodingUnit& cu, ComponentID compBegin, uint32_
   if (curPLTidx < maxPltSize)
   {
     recievedPLTnum = exp_golomb_eqprob(0);
+    binLogger.LogElements(SyntaxElement::new_palette_entries, recievedPLTnum);
   }
 
   cu.curPLTSize[compBegin] = curPLTidx + recievedPLTnum;
@@ -1732,6 +1802,7 @@ void CABACReader::cu_palette_info(CodingUnit& cu, ComponentID compBegin, uint32_
       ComponentID compID = (ComponentID)comp;
       const int  channelBitDepth = sps.getBitDepth(toChannelType(compID));
       cu.curPLT[compID][idx] = m_BinDecoder.decodeBinsEP(channelBitDepth);
+      binLogger.LogElements(SyntaxElement::palette_idx_idc, cu.curPLT[compID][idx]);
       if( cu.isLocalSepTree() )
       {
         if( isLuma( cu.chType ) )
@@ -1751,6 +1822,7 @@ void CABACReader::cu_palette_info(CodingUnit& cu, ComponentID compBegin, uint32_
   {
     uint32_t escCode = 0;
     escCode = m_BinDecoder.decodeBinEP();
+    binLogger.LogElements(SyntaxElement::palette_escape_val_present_flag, escCode);
     cu.useEscape[compBegin] = (escCode != 0);
   }
   uint32_t    indexMaxSize = cu.useEscape[compBegin] ? (cu.curPLTSize[compBegin] + 1) : cu.curPLTSize[compBegin];
@@ -1835,6 +1907,7 @@ void CABACReader::cuPaletteSubblockInfo(CodingUnit& cu, ComponentID compBegin, u
       int dist = curPos - prevRunPos - 1;
       const unsigned  ctxId = DeriveCtx::CtxPltCopyFlag(prevRunType, dist);
       identityFlag = m_BinDecoder.decodeBin( ctxSet( ctxId ) );
+      binLogger.LogElements(SyntaxElement::run_copy_flag, identityFlag);
       DTRACE(g_trace_ctx, D_SYNTAX, "plt_copy_flag() bin=%d ctx=%d\n", identityFlag, ctxId);
       runCopyFlag[curPos - minSubPos] = identityFlag;
     }
@@ -1852,6 +1925,7 @@ void CABACReader::cuPaletteSubblockInfo(CodingUnit& cu, ComponentID compBegin, u
       else
       {
         runType.at(posx, posy) = (m_BinDecoder.decodeBin(Ctx::RunTypeFlag()));
+        binLogger.LogElements(SyntaxElement::copy_above_palette_indices_flag, runType.at(posx, posy));
       }
       DTRACE(g_trace_ctx, D_SYNTAX, "plt_type_flag() bin=%d sp=%d\n", runType.at(posx, posy), curPos);
       prevRunType = runType.at(posx, posy);
@@ -1887,6 +1961,7 @@ void CABACReader::cuPaletteSubblockInfo(CodingUnit& cu, ComponentID compBegin, u
       if ( runCopyFlag[curPos - minSubPos] == 0 && runType.at(posx, posy) == PLT_RUN_INDEX )
       {
         xReadTruncBinCode(symbol, indexMaxSize - adjust);
+        binLogger.LogElements(SyntaxElement::pred_mode_plt_flag, symbol);
         xAdjustPLTIndex(cu, symbol, curPos, curPLTIdx, runType, indexMaxSize, compBegin);
         DTRACE(g_trace_ctx, D_SYNTAX, "plt_idx_idc() value=%d sp=%d\n", curPLTIdx.at(posx, posy), curPos);
       }
@@ -1936,6 +2011,7 @@ void CABACReader::cuPaletteSubblockInfo(CodingUnit& cu, ComponentID compBegin, u
           if (compID == COMPONENT_Y || compBegin != COMPONENT_Y)
           {
             escapeValue.at(posx, posy) = exp_golomb_eqprob(5);
+            binLogger.LogElements(SyntaxElement::palette_escape_val, escapeValue.at(posx, posy));
             assert(escapeValue.at(posx, posy) < (TCoeff(1) << (cu.cs->sps->getBitDepth(toChannelType((ComponentID)comp)) + 1)));
             DTRACE(g_trace_ctx, D_SYNTAX, "plt_escape_val() value=%d etype=%d sp=%d\n", escapeValue.at(posx, posy), comp, curPos);
           }
@@ -1944,6 +2020,7 @@ void CABACReader::cuPaletteSubblockInfo(CodingUnit& cu, ComponentID compBegin, u
             uint32_t posxC = posx >> scaleX;
             uint32_t posyC = posy >> scaleY;
             escapeValue.at(posxC, posyC) = exp_golomb_eqprob(5);
+            binLogger.LogElements(SyntaxElement::palette_escape_val, escapeValue.at(posxC, posyC));
             assert(escapeValue.at(posxC, posyC) < (TCoeff(1) << (cu.cs->sps->getBitDepth(toChannelType(compID)) + 1)));
             DTRACE(g_trace_ctx, D_SYNTAX, "plt_escape_val() value=%d etype=%d sp=%d\n", escapeValue.at(posx, posy), comp, curPos);
           }
@@ -1955,6 +2032,7 @@ void CABACReader::cuPaletteSubblockInfo(CodingUnit& cu, ComponentID compBegin, u
 void CABACReader::parseScanRotationModeFlag(CodingUnit& cu, ComponentID compBegin)
 {
   cu.useRotation[compBegin] = m_BinDecoder.decodeBin(Ctx::RotationFlag());
+  binLogger.LogElements(SyntaxElement::palette_transpose_flag, cu.useRotation[compBegin]);
 }
 
 void CABACReader::xDecodePLTPredIndicator(CodingUnit& cu, uint32_t maxPLTSize, ComponentID compBegin)
@@ -1962,6 +2040,7 @@ void CABACReader::xDecodePLTPredIndicator(CodingUnit& cu, uint32_t maxPLTSize, C
   uint32_t symbol, numPltPredicted = 0, idx = 0;
 
   symbol = exp_golomb_eqprob(0);
+  binLogger.LogElements(SyntaxElement::palette_predictor_run, symbol);
 
   if (symbol != 1)
   {
@@ -1970,6 +2049,7 @@ void CABACReader::xDecodePLTPredIndicator(CodingUnit& cu, uint32_t maxPLTSize, C
       if (idx > 0)
       {
         symbol = exp_golomb_eqprob(0);
+        binLogger.LogElements(SyntaxElement::palette_predictor_run, symbol);
       }
       if (symbol == 1)
       {
@@ -2167,6 +2247,7 @@ void CABACReader::smvd_mode( PredictionUnit& pu )
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET( STATS__CABAC_BITS__SYMMVD_FLAG );
 
   pu.cu->smvdMode = m_BinDecoder.decodeBin( Ctx::SmvdFlag() ) ? 1 : 0;
+  binLogger.LogElements(SyntaxElement::sym_mvd_flag, pu.cu->smvdMode);
 
   DTRACE( g_trace_ctx, D_SYNTAX, "symmvd_flag() symmvd=%d pos=(%d,%d) size=%dx%d\n", pu.cu->smvdMode ? 1 : 0, pu.lumaPos().x, pu.lumaPos().y, pu.lumaSize().width, pu.lumaSize().height );
 }
@@ -2181,6 +2262,7 @@ void CABACReader::subblock_merge_flag( CodingUnit& cu )
 
     unsigned ctxId = DeriveCtx::CtxAffineFlag( cu );
     cu.affine = m_BinDecoder.decodeBin( Ctx::SubblockMergeFlag( ctxId ) );
+    binLogger.LogElements(SyntaxElement::merge_subblock_flag, cu.affine);
     DTRACE( g_trace_ctx, D_SYNTAX, "subblock_merge_flag() subblock_merge_flag=%d ctx=%d pos=(%d,%d)\n", cu.affine ? 1 : 0, ctxId, cu.Y().x, cu.Y().y );
   }
 }
@@ -2193,12 +2275,14 @@ void CABACReader::affine_flag( CodingUnit& cu )
 
     unsigned ctxId = DeriveCtx::CtxAffineFlag( cu );
     cu.affine = m_BinDecoder.decodeBin( Ctx::AffineFlag( ctxId ) );
+    binLogger.LogElements(SyntaxElement::inter_affine_flag, cu.affine);
     DTRACE( g_trace_ctx, D_SYNTAX, "affine_flag() affine=%d ctx=%d pos=(%d,%d)\n", cu.affine ? 1 : 0, ctxId, cu.Y().x, cu.Y().y );
 
     if ( cu.affine && cu.cs->sps->getUseAffineType() )
     {
       ctxId = 0;
       cu.affineType = m_BinDecoder.decodeBin( Ctx::AffineType( ctxId ) );
+      binLogger.LogElements(SyntaxElement::cu_affine_type_flag, cu.affineType);
       DTRACE( g_trace_ctx, D_SYNTAX, "affine_type() affine_type=%d ctx=%d pos=(%d,%d)\n", cu.affineType ? 1 : 0, ctxId, cu.Y().x, cu.Y().y );
     }
     else
@@ -2213,6 +2297,7 @@ void CABACReader::merge_flag( PredictionUnit& pu )
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET( STATS__CABAC_BITS__MERGE_FLAG );
 
   pu.mergeFlag = ( m_BinDecoder.decodeBin( Ctx::MergeFlag() ) );
+  binLogger.LogElements(SyntaxElement::general_merge_flag, pu.mergeFlag);
 
   DTRACE( g_trace_ctx, D_SYNTAX, "merge_flag() merge=%d pos=(%d,%d) size=%dx%d\n", pu.mergeFlag ? 1 : 0, pu.lumaPos().x, pu.lumaPos().y, pu.lumaSize().width, pu.lumaSize().height );
 
@@ -2254,6 +2339,7 @@ void CABACReader::merge_data( PredictionUnit& pu )
     if (geoAvailable || ciipAvailable)
     {
       cu.firstPU->regularMergeFlag = m_BinDecoder.decodeBin(Ctx::RegularMergeFlag(cu.skip ? 0 : 1));
+      binLogger.LogElements(SyntaxElement::regular_merge_flag, cu.firstPU->regularMergeFlag);
     }
     else
     {
@@ -2264,6 +2350,7 @@ void CABACReader::merge_data( PredictionUnit& pu )
       if (cu.cs->slice->getSPS()->getUseMMVD())
       {
         cu.firstPU->mmvdMergeFlag = m_BinDecoder.decodeBin(Ctx::MmvdFlag(0));
+        binLogger.LogElements(SyntaxElement::mmvd_merge_flag, cu.firstPU->mmvdMergeFlag);
       }
       else
       {
@@ -2324,6 +2411,7 @@ void CABACReader::merge_idx( PredictionUnit& pu )
     {
       if ( m_BinDecoder.decodeBin( Ctx::AffMergeIdx() ) )
       {
+        binLogger.LogElement(SyntaxElement::merge_idx);
         pu.mergeIdx++;
         for ( ; pu.mergeIdx < numCandminus1; pu.mergeIdx++ )
         {
@@ -2331,6 +2419,7 @@ void CABACReader::merge_idx( PredictionUnit& pu )
           {
             break;
           }
+          binLogger.LogElement(SyntaxElement::merge_idx);
         }
       }
     }
@@ -2346,6 +2435,7 @@ void CABACReader::merge_idx( PredictionUnit& pu )
       RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET(STATS__CABAC_BITS__GEO_INDEX);
       uint32_t splitDir = 0;
       xReadTruncBinCode(splitDir, GEO_NUM_PARTITION_MODE);
+      binLogger.LogElements(SyntaxElement::merge_idx, splitDir);
       pu.geoSplitDir          = splitDir;
       const int maxNumGeoCand = pu.cs->sps->getMaxNumGeoCand();
       CHECK(maxNumGeoCand < 2, "Incorrect max number of geo candidates");
@@ -2356,13 +2446,17 @@ void CABACReader::merge_idx( PredictionUnit& pu )
       int mergeCand1    = 0;
       if (m_BinDecoder.decodeBin(Ctx::MergeIdx()))
       {
+        binLogger.LogElement(SyntaxElement::merge_idx);
         mergeCand0 += unary_max_eqprob(numCandminus2) + 1;
+        binLogger.LogElements(SyntaxElement::amvr_precision_idx, mergeCand0);
       }
       if (numCandminus2 > 0)
       {
         if (m_BinDecoder.decodeBin(Ctx::MergeIdx()))
         {
+          binLogger.LogElement(SyntaxElement::merge_idx);
           mergeCand1 += unary_max_eqprob(numCandminus2 - 1) + 1;
+          binLogger.LogElements(SyntaxElement::amvr_precision_idx, mergeCand1);
         }
       }
       mergeCand1 += mergeCand1 >= mergeCand0 ? 1 : 0;
@@ -2382,6 +2476,7 @@ void CABACReader::merge_idx( PredictionUnit& pu )
     {
       if (m_BinDecoder.decodeBin(Ctx::MergeIdx()))
       {
+        binLogger.LogElement(SyntaxElement::merge_idx);
         pu.mergeIdx++;
         for (; pu.mergeIdx < numCandminus1; pu.mergeIdx++)
         {
@@ -2389,6 +2484,7 @@ void CABACReader::merge_idx( PredictionUnit& pu )
           {
             break;
           }
+          binLogger.LogElement(SyntaxElement::merge_idx);
         }
       }
     }
@@ -2405,12 +2501,14 @@ void CABACReader::mmvd_merge_idx(PredictionUnit& pu)
   {
     static_assert(MMVD_BASE_MV_NUM == 2, "");
     var0 = m_BinDecoder.decodeBin(Ctx::MmvdMergeIdx());
+    binLogger.LogElements(SyntaxElement::mmvd_merge_flag, var0);
   }
   DTRACE(g_trace_ctx, D_SYNTAX, "base_mvp_idx() base_mvp_idx=%d\n", var0);
   int numCandminus1_step = MMVD_REFINE_STEP - 1;
   int var1 = 0;
   if (m_BinDecoder.decodeBin(Ctx::MmvdStepMvpIdx()))
   {
+    binLogger.LogElement(SyntaxElement::mmvd_distance_idx);
     var1++;
     for (; var1 < numCandminus1_step; var1++)
     {
@@ -2418,15 +2516,18 @@ void CABACReader::mmvd_merge_idx(PredictionUnit& pu)
       {
         break;
       }
+      binLogger.LogElement(SyntaxElement::mmvd_distance_idx);
     }
   }
   DTRACE(g_trace_ctx, D_SYNTAX, "MmvdStepMvpIdx() MmvdStepMvpIdx=%d\n", var1);
   int var2 = 0;
   if (m_BinDecoder.decodeBinEP())
   {
+    binLogger.LogElement(SyntaxElement::mmvd_distance_idx);
     var2 += 2;
     if (m_BinDecoder.decodeBinEP())
     {
+      binLogger.LogElement(SyntaxElement::mmvd_distance_idx);
       var2 += 1;
     }
   }
@@ -2435,6 +2536,7 @@ void CABACReader::mmvd_merge_idx(PredictionUnit& pu)
     var2 += 0;
     if (m_BinDecoder.decodeBinEP())
     {
+      binLogger.LogElement(SyntaxElement::mmvd_distance_idx);
       var2 += 1;
     }
   }
@@ -2458,6 +2560,7 @@ void CABACReader::inter_pred_idc( PredictionUnit& pu )
     unsigned ctxId = DeriveCtx::CtxInterDir(pu);
     if( m_BinDecoder.decodeBin( Ctx::InterDir(ctxId) ) )
     {
+      binLogger.LogElement(SyntaxElement::inter_pred_idc);
       DTRACE( g_trace_ctx, D_SYNTAX, "inter_pred_idc() ctx=%d value=%d pos=(%d,%d)\n", ctxId, 3, pu.lumaPos().x, pu.lumaPos().y );
       pu.interDir = 3;
       return;
@@ -2465,6 +2568,7 @@ void CABACReader::inter_pred_idc( PredictionUnit& pu )
   }
   if( m_BinDecoder.decodeBin( Ctx::InterDir(5) ) )
   {
+    binLogger.LogElement(SyntaxElement::inter_pred_idc);
     DTRACE( g_trace_ctx, D_SYNTAX, "inter_pred_idc() ctx=5 value=%d pos=(%d,%d)\n", 2, pu.lumaPos().x, pu.lumaPos().y );
     pu.interDir = 2;
     return;
@@ -2488,6 +2592,7 @@ void CABACReader::ref_idx( PredictionUnit &pu, RefPicList eRefList )
 
   if( numRef <= 1 || !m_BinDecoder.decodeBin( Ctx::RefPic() ) )
   {
+    binLogger.LogElement(SyntaxElement::ref_idx_l0);
     if( numRef > 1 )
     {
       DTRACE( g_trace_ctx, D_SYNTAX, "ref_idx() value=%d pos=(%d,%d)\n", 0, pu.lumaPos().x, pu.lumaPos().y );
@@ -2497,6 +2602,7 @@ void CABACReader::ref_idx( PredictionUnit &pu, RefPicList eRefList )
   }
   if( numRef <= 2 || !m_BinDecoder.decodeBin( Ctx::RefPic(1) ) )
   {
+    binLogger.LogElement(SyntaxElement::ref_idx_l1);
     DTRACE( g_trace_ctx, D_SYNTAX, "ref_idx() value=%d pos=(%d,%d)\n", 1, pu.lumaPos().x, pu.lumaPos().y );
     pu.refIdx[eRefList] = 1;
     return;
@@ -2509,6 +2615,7 @@ void CABACReader::ref_idx( PredictionUnit &pu, RefPicList eRefList )
       DTRACE( g_trace_ctx, D_SYNTAX, "ref_idx() value=%d pos=(%d,%d)\n", idx-1, pu.lumaPos().x, pu.lumaPos().y );
       return;
     }
+    binLogger.LogElement(SyntaxElement::ref_idx_l0);
   }
 }
 
@@ -2517,6 +2624,7 @@ void CABACReader::mvp_flag( PredictionUnit& pu, RefPicList eRefList )
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET( STATS__CABAC_BITS__MVP_IDX );
 
   unsigned mvp_idx = m_BinDecoder.decodeBin( Ctx::MVPIdx() );
+  binLogger.LogElements(SyntaxElement::mvp_l0_flag, mvp_idx);
   DTRACE( g_trace_ctx, D_SYNTAX, "mvp_flag() value=%d pos=(%d,%d)\n", mvp_idx, pu.lumaPos().x, pu.lumaPos().y );
   pu.mvpIdx [eRefList] = mvp_idx;
   DTRACE( g_trace_ctx, D_SYNTAX, "mvpIdx(refList:%d)=%d\n", eRefList, mvp_idx );
@@ -2538,6 +2646,7 @@ void CABACReader::Ciip_flag(PredictionUnit& pu)
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET(STATS__CABAC_BITS__MH_INTRA_FLAG);
 
   pu.ciipFlag = (m_BinDecoder.decodeBin(Ctx::CiipFlag()));
+  binLogger.LogElements(SyntaxElement::ciip_flag, pu.ciipFlag);
   DTRACE(g_trace_ctx, D_SYNTAX, "Ciip_flag() Ciip=%d pos=(%d,%d) size=%dx%d\n", pu.ciipFlag ? 1 : 0, pu.lumaPos().x, pu.lumaPos().y, pu.lumaSize().width, pu.lumaSize().height);
 }
 
@@ -2647,10 +2756,18 @@ bool CABACReader::cbf_comp( CodingStructure& cs, const CompArea& area, unsigned 
       ctxId = 2;
     }
     cbf = m_BinDecoder.decodeBin(ctxSet(ctxId));
+    binLogger.LogElements(area.compID == COMPONENT_Y
+                              ? SyntaxElement::intra_bdpcm_luma_flag
+                              : SyntaxElement::intra_bdpcm_chroma_flag,
+                          cbf);
   }
   else
   {
     cbf = m_BinDecoder.decodeBin( ctxSet( ctxId ) );
+    binLogger.LogElements(area.compID == COMPONENT_Y
+                              ? SyntaxElement::intra_bdpcm_luma_flag
+                              : SyntaxElement::intra_bdpcm_chroma_flag,
+                          cbf);
   }
 
   DTRACE( g_trace_ctx, D_SYNTAX, "cbf_comp() etype=%d pos=(%d,%d) ctx=%d cbf=%d\n", area.compID, area.x, area.y, ctxId, cbf );
@@ -2675,15 +2792,18 @@ void CABACReader::mvd_coding( Mv &rMvd )
   // abs_mvd_greater0_flag[ 0 | 1 ]
   int horAbs = (int)m_BinDecoder.decodeBin(Ctx::Mvd());
   int verAbs = (int)m_BinDecoder.decodeBin(Ctx::Mvd());
+  binLogger.LogElements(SyntaxElement::abs_mvd_greater0_flag, horAbs, verAbs);
 
   // abs_mvd_greater1_flag[ 0 | 1 ]
   if (horAbs)
   {
     horAbs += (int)m_BinDecoder.decodeBin(Ctx::Mvd(1));
+    binLogger.LogElement(SyntaxElement::abs_mvd_greater1_flag);
   }
   if (verAbs)
   {
     verAbs += (int)m_BinDecoder.decodeBin(Ctx::Mvd(1));
+    binLogger.LogElement(SyntaxElement::abs_mvd_greater1_flag);
   }
 
   RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_mvd_ep );
@@ -2694,9 +2814,11 @@ void CABACReader::mvd_coding( Mv &rMvd )
     if (horAbs > 1)
     {
       horAbs += m_BinDecoder.decodeRemAbsEP(1, 0, MV_BITS - 1);
+      binLogger.LogElement(SyntaxElement::abs_mvd_minus2);
     }
     if (m_BinDecoder.decodeBinEP())
     {
+      binLogger.LogElement(SyntaxElement::mvd_sign_flag);
       horAbs = -horAbs;
     }
   }
@@ -2705,10 +2827,12 @@ void CABACReader::mvd_coding( Mv &rMvd )
     if (verAbs > 1)
     {
       verAbs += m_BinDecoder.decodeRemAbsEP(1, 0, MV_BITS - 1);
+      binLogger.LogElement(SyntaxElement::abs_mvd_minus2);
     }
     if (m_BinDecoder.decodeBinEP())
     {
       verAbs = -verAbs;
+      binLogger.LogElement(SyntaxElement::mvd_sign_flag);
     }
   }
   rMvd = Mv(horAbs, verAbs);
@@ -2858,14 +2982,17 @@ void CABACReader::cu_qp_delta( CodingUnit& cu, int predQP, int8_t& qp )
   CHECK( predQP == std::numeric_limits<int>::max(), "Invalid predicted QP" );
   int qpY = predQP;
   int DQp = unary_max_symbol( Ctx::DeltaQP(), Ctx::DeltaQP(1), CU_DQP_TU_CMAX );
+  binLogger.LogElements(SyntaxElement::cu_qp_delta_abs, DQp);
   if( DQp >= CU_DQP_TU_CMAX )
   {
     DQp += exp_golomb_eqprob( CU_DQP_EG_k  );
+    binLogger.LogElement(SyntaxElement::cu_qp_delta_abs);
   }
   if( DQp > 0 )
   {
     if( m_BinDecoder.decodeBinEP( ) )
     {
+      binLogger.LogElement(SyntaxElement::cu_qp_delta_sign_flag);
       DQp = -DQp;
     }
     int     qpBdOffsetY = cu.cs->sps->getQpBDOffset( CHANNEL_TYPE_LUMA );
@@ -2884,10 +3011,12 @@ void CABACReader::cu_chroma_qp_offset( CodingUnit& cu )
   // cu_chroma_qp_offset_flag
   int       length  = cu.cs->pps->getChromaQpOffsetListLen();
   unsigned  qpAdj   = m_BinDecoder.decodeBin( Ctx::ChromaQpAdjFlag() );
+  binLogger.LogElements(SyntaxElement::cu_chroma_qp_offset_flag, qpAdj);
   if( qpAdj && length > 1 )
   {
     // cu_chroma_qp_offset_idx
     qpAdj += unary_max_symbol( Ctx::ChromaQpAdjIdc(), Ctx::ChromaQpAdjIdc(), length-1 );
+    binLogger.LogElement(SyntaxElement::cu_chroma_qp_offset_idx);
   }
   /* NB, symbol = 0 if outer flag is not set,
    *              1 if outer flag is set and there is no inner flag
@@ -2915,6 +3044,7 @@ void CABACReader::joint_cb_cr( TransformUnit& tu, const int cbfMask )
   {
     RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE2( STATS__CABAC_BITS__JOINT_CB_CR, tu.blocks[COMPONENT_Cr].lumaSize(), CHANNEL_TYPE_CHROMA );
     tu.jointCbCr = ( m_BinDecoder.decodeBin( Ctx::JointCbCrFlag( cbfMask-1 ) ) ? cbfMask : 0 );
+    binLogger.LogElements(SyntaxElement::tu_joint_cbcr_residual_flag, tu.jointCbCr);
   }
 }
 
@@ -3007,6 +3137,7 @@ void CABACReader::ts_flag( TransformUnit& tu, ComponentID compID )
   {
     RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE2( STATS__CABAC_BITS__MTS_FLAGS, tu.blocks[compID], compID );
     tsFlag = m_BinDecoder.decodeBin( Ctx::TransformSkipFlag( ctxIdx ) );
+    binLogger.LogElements(SyntaxElement::transform_skip_flag, tsFlag);
   }
 
   tu.mtsIdx[compID] = tsFlag ? MTS_SKIP : MTS_DCT2_DCT2;
@@ -3025,6 +3156,7 @@ void CABACReader::mts_idx( CodingUnit& cu, CUCtx& cuCtx )
     RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE2( STATS__CABAC_BITS__MTS_FLAGS, tu.blocks[COMPONENT_Y], COMPONENT_Y );
     int ctxIdx = 0;
     int symbol = m_BinDecoder.decodeBin( Ctx::MTSIdx(ctxIdx));
+    binLogger.LogElements(SyntaxElement::mts_idx, symbol);
 
     if( symbol )
     {
@@ -3033,6 +3165,7 @@ void CABACReader::mts_idx( CodingUnit& cu, CUCtx& cuCtx )
       for( int i = 0; i < 3; i++, ctxIdx++ )
       {
         symbol  = m_BinDecoder.decodeBin( Ctx::MTSIdx(ctxIdx));
+        binLogger.LogElements(SyntaxElement::mts_idx, symbol);
         mtsIdx += symbol;
 
         if( !symbol )
@@ -3059,11 +3192,13 @@ void CABACReader::isp_mode( CodingUnit& cu )
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET(STATS__CABAC_BITS__ISP_MODE_FLAG);
 
   int symbol = m_BinDecoder.decodeBin(Ctx::ISPMode(0));
+  binLogger.LogElements(SyntaxElement::intra_subpartitions_mode_flag, symbol);
 
   if( symbol )
   {
     RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET( STATS__CABAC_BITS__ISP_SPLIT_FLAG );
     cu.ispMode = 1 + m_BinDecoder.decodeBin( Ctx::ISPMode( 1 ) );
+    binLogger.LogElements(SyntaxElement::intra_subpartitions_mode_flag, cu.ispMode);
   }
   DTRACE( g_trace_ctx, D_SYNTAX, "intra_subPartitions() etype=%d pos=(%d,%d) ispIdx=%d\n", cu.chType, cu.blocks[cu.chType].x, cu.blocks[cu.chType].y, (int)cu.ispMode );
 }
@@ -3116,9 +3251,11 @@ void CABACReader::residual_lfnst_mode( CodingUnit& cu,  CUCtx& cuCtx  )
   if ( cu.isSepTree() ) cctx++;
 
   uint32_t idxLFNST = m_BinDecoder.decodeBin( Ctx::LFNSTIdx( cctx ) );
+  binLogger.LogElements(SyntaxElement::lfnst_idx, idxLFNST);
   if( idxLFNST )
   {
     idxLFNST += m_BinDecoder.decodeBin(Ctx::LFNSTIdx(2));
+    binLogger.LogElement(SyntaxElement::lfnst_idx);
   }
   cu.lfnstIdx = idxLFNST;
 
@@ -3153,6 +3290,7 @@ int CABACReader::last_sig_coeff( CoeffCodingContext& cctx, TransformUnit& tu, Co
     {
       break;
     }
+    binLogger.LogElement(SyntaxElement::last_sig_coeff_x_prefix);
   }
   for( ; PosLastY < maxLastPosY; PosLastY++ )
   {
@@ -3160,6 +3298,7 @@ int CABACReader::last_sig_coeff( CoeffCodingContext& cctx, TransformUnit& tu, Co
     {
       break;
     }
+    binLogger.LogElement(SyntaxElement::last_sig_coeff_y_prefix);
   }
   if( PosLastX > 3 )
   {
@@ -3168,6 +3307,7 @@ int CABACReader::last_sig_coeff( CoeffCodingContext& cctx, TransformUnit& tu, Co
     for ( int i = uiCount - 1; i >= 0; i-- )
     {
       temp += m_BinDecoder.decodeBinEP() << i;
+      binLogger.LogElement(SyntaxElement::last_sig_coeff_x_suffix);
     }
     PosLastX = g_minInGroup[PosLastX] + temp;
   }
@@ -3178,6 +3318,7 @@ int CABACReader::last_sig_coeff( CoeffCodingContext& cctx, TransformUnit& tu, Co
     for ( int i = uiCount - 1; i >= 0; i-- )
     {
       temp += m_BinDecoder.decodeBinEP() << i;
+      binLogger.LogElement(SyntaxElement::last_sig_coeff_y_suffix);
     }
     PosLastY = g_minInGroup[PosLastY] + temp;
   }
@@ -3235,6 +3376,7 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
   if( !sigGroup )
   {
     sigGroup = m_BinDecoder.decodeBin( cctx.sigGroupCtxId() );
+    binLogger.LogElements(SyntaxElement::sig_coeff_flag, sigGroup);
   }
   if( sigGroup )
   {
@@ -3265,6 +3407,7 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
       RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_map );
       const unsigned sigCtxId = cctx.sigCtxIdAbs( nextSigPos, coeff, state );
       sigFlag = m_BinDecoder.decodeBin( sigCtxId );
+      binLogger.LogElements(SyntaxElement::sig_coeff_flag, sigFlag);
       DTRACE( g_trace_ctx, D_SYNTAX_RESI, "sig_bin() bin=%d ctx=%d\n", sigFlag, sigCtxId );
       remRegBins--;
     }
@@ -3283,6 +3426,7 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
 
       RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_gt1 );
       unsigned gt1Flag = m_BinDecoder.decodeBin( cctx.greater1CtxIdAbs(ctxOff) );
+      binLogger.LogElements(SyntaxElement::abs_mvd_greater0_flag, gt1Flag);
       DTRACE( g_trace_ctx, D_SYNTAX_RESI, "gt1_flag() bin=%d ctx=%d\n", gt1Flag, cctx.greater1CtxIdAbs(ctxOff) );
       remRegBins--;
 
@@ -3292,11 +3436,13 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
       {
         RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_par );
         parFlag = m_BinDecoder.decodeBin( cctx.parityCtxIdAbs( ctxOff ) );
+        binLogger.LogElements(SyntaxElement::par_level_flag, parFlag);
         DTRACE( g_trace_ctx, D_SYNTAX_RESI, "par_flag() bin=%d ctx=%d\n", parFlag, cctx.parityCtxIdAbs( ctxOff ) );
 
         remRegBins--;
         RExt__DECODER_DEBUG_BIT_STATISTICS_SET(ctype_gt2);
         gt2Flag = m_BinDecoder.decodeBin( cctx.greater2CtxIdAbs( ctxOff ) );
+        binLogger.LogElements(SyntaxElement::abs_mvd_greater1_flag, gt2Flag);
         DTRACE( g_trace_ctx, D_SYNTAX_RESI, "gt2_flag() bin=%d ctx=%d\n", gt2Flag, cctx.greater2CtxIdAbs( ctxOff ) );
         remRegBins--;
       }
@@ -3320,6 +3466,7 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
     {
       RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_escs );
       int       rem     = m_BinDecoder.decodeRemAbsEP( ricePar, COEF_REMAIN_BIN_REDUCTION, cctx.maxLog2TrDRange() );
+      binLogger.LogElements(SyntaxElement::abs_remainder, rem);
       DTRACE( g_trace_ctx, D_SYNTAX_RESI, "rem_val() bin=%d ctx=%d\n", rem, ricePar );
       tcoeff += (rem<<1);
       if ((updateHistory) && (rem > 0))
@@ -3339,6 +3486,7 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
     int       pos0   = g_goRicePosCoeff0(state, rice);
     RExt__DECODER_DEBUG_BIT_STATISTICS_SET(ctype_escs);
     int       rem       = m_BinDecoder.decodeRemAbsEP( rice, COEF_REMAIN_BIN_REDUCTION, cctx.maxLog2TrDRange() );
+    binLogger.LogElements(SyntaxElement::abs_remainder, rem);
     DTRACE( g_trace_ctx, D_SYNTAX_RESI, "rem_val() bin=%d ctx=%d\n", rem, rice );
     TCoeff    tcoeff  = ( rem == pos0 ? 0 : rem < pos0 ? rem+1 : rem );
     state = ( stateTransTable >> ((state<<2)+((tcoeff&1)<<1)) ) & 3;
@@ -3363,6 +3511,7 @@ void CABACReader::residual_coding_subblock( CoeffCodingContext& cctx, TCoeff* co
   RExt__DECODER_DEBUG_BIT_STATISTICS_CREATE_SET_SIZE2( STATS__CABAC_BITS__SIGN_BIT, Size( cctx.width(), cctx.height() ), cctx.compID() );
   const unsigned  numSigns    = ( cctx.hideSign( firstNZPos, lastNZPos ) ? numNonZero - 1 : numNonZero );
   unsigned        signPattern = m_BinDecoder.decodeBinsEP( numSigns ) << ( 32 - numSigns );
+  binLogger.LogElements(SyntaxElement::num_signalled_palette_entries, signPattern);
 
   //===== set final coefficents =====
   TCoeff sumAbs = 0;
@@ -3439,6 +3588,7 @@ void CABACReader::residual_coding_subblockTS( CoeffCodingContext& cctx, TCoeff* 
   if( !sigGroup )
   {
     sigGroup = m_BinDecoder.decodeBin(cctx.sigGroupCtxId(true));
+    binLogger.LogElements(SyntaxElement::sig_coeff_flag, sigGroup);
     DTRACE(g_trace_ctx, D_SYNTAX_RESI, "ts_sigGroup() bin=%d ctx=%d\n", sigGroup, cctx.sigGroupCtxId());
   }
   if( sigGroup )
@@ -3466,6 +3616,7 @@ void CABACReader::residual_coding_subblockTS( CoeffCodingContext& cctx, TCoeff* 
       RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_map );
       const unsigned sigCtxId = cctx.sigCtxIdAbsTS(nextSigPos, coeff);
       sigFlag                 = m_BinDecoder.decodeBin(sigCtxId);
+      binLogger.LogElements(SyntaxElement::sig_coeff_flag, sigFlag);
       DTRACE(g_trace_ctx, D_SYNTAX_RESI, "ts_sig_bin() bin=%d ctx=%d\n", sigFlag, sigCtxId);
       cctx.decimateNumCtxBins(1);
     }
@@ -3481,6 +3632,7 @@ void CABACReader::residual_coding_subblockTS( CoeffCodingContext& cctx, TCoeff* 
       int sign;
       const unsigned signCtxId = cctx.signCtxIdAbsTS(nextSigPos, coeff, cctx.bdpcm());
       sign                     = m_BinDecoder.decodeBin(signCtxId);
+      binLogger.LogElements(SyntaxElement::sig_coeff_flag, sign);
       cctx.decimateNumCtxBins(1);
 
       signPattern += ( sign << numNonZero );
@@ -3491,6 +3643,7 @@ void CABACReader::residual_coding_subblockTS( CoeffCodingContext& cctx, TCoeff* 
       unsigned gt1Flag;
       const unsigned gt1CtxId = cctx.lrg1CtxIdAbsTS(nextSigPos, coeff, cctx.bdpcm());
       gt1Flag                 = m_BinDecoder.decodeBin(gt1CtxId);
+      binLogger.LogElements(SyntaxElement::abs_mvd_greater0_flag, gt1Flag);
       DTRACE(g_trace_ctx, D_SYNTAX_RESI, "ts_gt1_flag() bin=%d ctx=%d\n", gt1Flag, gt1CtxId);
       cctx.decimateNumCtxBins(1);
 
@@ -3499,6 +3652,7 @@ void CABACReader::residual_coding_subblockTS( CoeffCodingContext& cctx, TCoeff* 
       {
         RExt__DECODER_DEBUG_BIT_STATISTICS_SET( ctype_par );
         parFlag = m_BinDecoder.decodeBin(cctx.parityCtxIdAbsTS());
+        binLogger.LogElements(SyntaxElement::par_level_flag, parFlag);
         DTRACE(g_trace_ctx, D_SYNTAX_RESI, "ts_par_flag() bin=%d ctx=%d\n", parFlag, cctx.parityCtxIdAbsTS());
         cctx.decimateNumCtxBins(1);
       }
@@ -3526,6 +3680,7 @@ void CABACReader::residual_coding_subblockTS( CoeffCodingContext& cctx, TCoeff* 
         RExt__DECODER_DEBUG_BIT_STATISTICS_SET(ctype_gt2);
         unsigned gt2Flag;
         gt2Flag = m_BinDecoder.decodeBin(cctx.greaterXCtxIdAbsTS(cutoffVal >> 1));
+        binLogger.LogElements(SyntaxElement::abs_mvd_greater1_flag, gt2Flag);
         tcoeff += (gt2Flag << 1);
         DTRACE(g_trace_ctx, D_SYNTAX_RESI, "ts_gt%d_flag() bin=%d ctx=%d sp=%d coeff=%d\n", i, gt2Flag,
                cctx.greaterXCtxIdAbsTS(cutoffVal >> 1), scanPos, tcoeff);
@@ -3550,12 +3705,14 @@ void CABACReader::residual_coding_subblockTS( CoeffCodingContext& cctx, TCoeff* 
     {
       int       rice = riceParam;
       int       rem  = m_BinDecoder.decodeRemAbsEP( rice, COEF_REMAIN_BIN_REDUCTION, cctx.maxLog2TrDRange() );
+      binLogger.LogElements(SyntaxElement::abs_remainder, rem);
       DTRACE( g_trace_ctx, D_SYNTAX_RESI, "ts_rem_val() bin=%d ctx=%d sp=%d\n", rem, rice, scanPos );
       tcoeff += (scanPos <= lastScanPosPass1) ? (rem << 1) : rem;
       if (tcoeff && scanPos > lastScanPosPass1)
       {
         int      blkPos = cctx.blockPos(scanPos);
         int sign = m_BinDecoder.decodeBinEP();
+        binLogger.LogElements(SyntaxElement::coeff_sign_flag, sign);
         signPattern += (sign << numNonZero);
         sigBlkPos[numNonZero++] = blkPos;
       }
@@ -3658,6 +3815,7 @@ void CABACReader::mip_flag( CodingUnit& cu )
 
   unsigned ctxId = DeriveCtx::CtxMipFlag( cu );
   cu.mipFlag = m_BinDecoder.decodeBin( Ctx::MipFlag( ctxId ) );
+  binLogger.LogElements(SyntaxElement::intra_mip_flag, cu.mipFlag);
   DTRACE( g_trace_ctx, D_SYNTAX, "mip_flag() pos=(%d,%d) mode=%d\n", cu.lumaPos().x, cu.lumaPos().y, cu.mipFlag ? 1 : 0 );
 }
 
@@ -3678,10 +3836,12 @@ void CABACReader::mip_pred_modes( CodingUnit &cu )
 void CABACReader::mip_pred_mode( PredictionUnit &pu )
 {
   pu.mipTransposedFlag = bool(m_BinDecoder.decodeBinEP());
+  binLogger.LogElements(SyntaxElement::intra_mip_transposed_flag, pu.mipTransposedFlag);
 
   uint32_t mipMode;
   const int numModes = getNumModesMip( pu.Y() );
   xReadTruncBinCode( mipMode, numModes );
+  binLogger.LogElements(SyntaxElement::intra_mip_mode, mipMode);
   pu.intraDir[CHANNEL_TYPE_LUMA] = mipMode;
   CHECKD( pu.intraDir[CHANNEL_TYPE_LUMA] < 0 || pu.intraDir[CHANNEL_TYPE_LUMA] >= numModes, "Invalid MIP mode" );
 
