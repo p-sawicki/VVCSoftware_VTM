@@ -71,6 +71,8 @@ struct Picture : public UnitArea
   operator EntropyCoding::Picture() const
   {
     EntropyCoding::Picture result;
+    result.chromaFormat = static_cast<EntropyCoding::ChromaFormat>(chromaFormat);
+    result.blocks       = EntropyCoding::UnitBlocksType(blocks.begin(), blocks.end());
     for (int i = 0; i < 2; ++i)
     {
       result.m_sao[i].resize(m_sao[i].size());
@@ -84,6 +86,8 @@ struct Picture : public UnitArea
 
   const Picture &operator=(const EntropyCoding::Picture &rhs)
   {
+    chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
+    blocks       = UnitBlocksType(rhs.blocks.begin(), rhs.blocks.end());
     for (int i = 0; i < 2; ++i)
     {
       std::copy(rhs.m_sao[i].begin(), rhs.m_sao[i].end(), m_sao[i].begin());

@@ -2923,19 +2923,20 @@ public:
       }
     }
 
-    return EntropyCoding::Slice(m_saoEnabledFlag, static_cast<EntropyCoding::SliceType>(m_eSliceType), m_iSliceQp,
-                                m_ChromaQpAdjEnabled, m_depQuantEnabledFlag, m_riceBaseLevelValue,
-                                m_signDataHidingEnabledFlag, m_tsResidualCodingDisabledFlag, m_aiNumRefIdx, m_bCheckLDC,
-                                m_biDirPred, m_symRefIdx, m_independentSliceIdx, std::move(table), m_cabacInitFlag,
-                                static_cast<EntropyCoding::SliceType>(m_encCABACTableIdx), std::move(apss),
-                                m_alfEnabledFlag, m_numAlfApsIdsLuma, m_alfApsIdChroma, m_tsrc_index, m_riceBit);
+    return EntropyCoding::Slice(
+      m_saoEnabledFlag, static_cast<EntropyCoding::SliceType>(m_eSliceType), m_iSliceQp, m_ChromaQpAdjEnabled,
+      m_depQuantEnabledFlag, m_riceBaseLevelValue, m_signDataHidingEnabledFlag, m_tsResidualCodingDisabledFlag,
+      m_aiNumRefIdx, m_bCheckLDC, m_biDirPred, m_symRefIdx, m_independentSliceIdx, std::move(table), m_cabacInitFlag,
+      static_cast<EntropyCoding::SliceType>(m_encCABACTableIdx), std::move(apss), m_alfEnabledFlag, m_numAlfApsIdsLuma,
+      m_alfApsIdChroma, m_tsrc_index, m_riceBit, m_ccAlfFilterParam, m_ccAlfFilterControl);
   }
 
   const Slice &operator=(const EntropyCoding::Slice &rhs)
   {
     for (int i = 0; i < ALF_CTB_MAX_NUM_APS; ++i)
     {
-      *m_alfApss[i] = *rhs.getAlfAPSs()[i];
+      if (m_alfApss[i])
+        *m_alfApss[i] = *rhs.getAlfAPSs()[i];
     }
 
     for (int i = 0; i < NUM_REF_PIC_LIST_01; ++i)

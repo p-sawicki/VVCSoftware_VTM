@@ -121,6 +121,23 @@ struct PartLevel
     std::copy(rhs.parts.begin(), rhs.parts.end(), parts.begin());
   }
 
+  PartLevel &operator=(const EntropyCoding::PartLevel &rhs)
+  {
+    split             = static_cast<PartSplit>(rhs.split);
+    idx               = rhs.idx;
+    checkdIfImplicit  = rhs.checkdIfImplicit;
+    isImplicit        = rhs.isImplicit;
+    implicitSplit     = static_cast<PartSplit>(rhs.implicitSplit);
+    firstSubPartSplit = static_cast<PartSplit>(rhs.firstSubPartSplit);
+    canQtSplit        = rhs.canQtSplit;
+    qgEnable          = rhs.qgEnable;
+    qgChromaEnable    = rhs.qgChromaEnable;
+    modeType          = rhs.modeType;
+    parts.resize(rhs.parts.size());
+    std::copy(rhs.parts.begin(), rhs.parts.end(), parts.begin());
+    return *this;
+  }
+
   operator EntropyCoding::PartLevel() const
   {
     EntropyCoding::Partitioning _parts(parts.size());
@@ -166,7 +183,7 @@ public:
 
   const Partitioner &operator=(const EntropyCoding::Partitioner &rhs)
   {
-    m_partStack         = rhs.getPartStack();
+    m_partStack = rhs.getPartStack();
     currDepth           = rhs.currDepth;
     currQtDepth         = rhs.currQtDepth;
     currTrDepth         = rhs.currTrDepth;
@@ -224,7 +241,7 @@ class QTBTPartitioner : public AdaptiveDepthPartitioner
 {
 public:
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Partitioner*() const
+  operator EntropyCoding::Partitioner *() const
   {
     return new EntropyCoding::QTBTPartitioner(
       m_partStack, currDepth, currQtDepth, currTrDepth, currBtDepth, currMtDepth, currSubdiv, currQgPos,
@@ -267,7 +284,7 @@ public:
   }
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Partitioner*() const
+  operator EntropyCoding::Partitioner *() const
   {
     return new EntropyCoding::TUIntraSubPartitioner(
       m_partStack, currDepth, currQtDepth, currTrDepth, currBtDepth, currMtDepth, currSubdiv, currQgPos,

@@ -277,8 +277,8 @@ struct CcAlfFilterParam
   operator EntropyCoding::CcAlfFilterParam() const
   {
     EntropyCoding::CcAlfFilterParam result;
-    std::copy(ccAlfFilterEnabled, ccAlfFilterEnabled + 2, result.ccAlfFilterEnabled.begin());
-    std::copy(ccAlfFilterCount, ccAlfFilterCount + 2, result.ccAlfFilterCount.begin());
+    EntropyCoding::copy_array(ccAlfFilterEnabled, result.ccAlfFilterEnabled);
+    EntropyCoding::copy_array(ccAlfFilterCount, result.ccAlfFilterCount);
     return result;
   }
 #endif

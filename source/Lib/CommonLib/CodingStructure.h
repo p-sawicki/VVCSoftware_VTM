@@ -103,7 +103,7 @@ public:
   CodingStructure(CUCache&, PUCache&, TUCache&);
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::CodingStructure() const;
+  std::shared_ptr<EntropyCoding::CodingStructure> get_cs() const;
 
   const CodingStructure &operator=(const EntropyCoding::CodingStructure &rhs);
 #endif

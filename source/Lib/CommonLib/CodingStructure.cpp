@@ -106,69 +106,236 @@ CodingStructure::CodingStructure(CUCache& cuCache, PUCache& puCache, TUCache& tu
 }
 
 #ifdef STANDALONE_ENTROPY_CODEC
-CodingStructure::operator EntropyCoding::CodingStructure() const
+template<typename T1, typename T2>
+T2 *get_or_default(const std::unordered_map<const T1 *, std::shared_ptr<T2>> &map, const T1 *key,
+                   T2 *_default = nullptr)
 {
-  EntropyCoding::CodingStructure *_parent = nullptr;
-  if (parent)
+  auto it = map.find(key);
+  if (it == map.end())
   {
-    _parent = new EntropyCoding::CodingStructure(*parent);
+    return _default;
+  }
+  return it->second.get();
+}
+
+template<typename T1, typename T2>
+std::shared_ptr<T2> get_shared_or_default(const std::unordered_map<const T1 *, std::shared_ptr<T2>> &map, const T1 *key,
+                                          T2 *_default = nullptr)
+{
+  auto it = map.find(key);
+  if (it == map.end())
+  {
+    return std::shared_ptr<T2>(nullptr);
+  }
+  return it->second;
+}
+
+std::shared_ptr<EntropyCoding::CodingStructure> CodingStructure:: get_cs() const {
+  std::unordered_map<const CodingStructure *, std::shared_ptr<EntropyCoding::CodingStructure>> css;
+  std::unordered_map<const Picture *, std::shared_ptr<EntropyCoding::Picture>>                 pictures;
+  std::unordered_map<const Slice *, std::shared_ptr<EntropyCoding::Slice>>                     slices;
+  std::unordered_map<const SPS *, std::shared_ptr<EntropyCoding::SPS>>                         spss;
+  std::unordered_map<const PPS *, std::shared_ptr<EntropyCoding::PPS>>                         ppss;
+  std::unordered_map<const PicHeader *, std::shared_ptr<EntropyCoding::PicHeader>>             pic_headers;
+  std::unordered_map<const PreCalcValues *, std::shared_ptr<EntropyCoding::PreCalcValues>>     pre_calc_values;
+  std::unordered_map<const CodingUnit *, std::shared_ptr<EntropyCoding::CodingUnit>>           cu_map;
+  std::unordered_map<const PredictionUnit *, std::shared_ptr<EntropyCoding::PredictionUnit>>   pu_map;
+  std::unordered_map<const TransformUnit *, std::shared_ptr<EntropyCoding::TransformUnit>>     tu_map;
+  std::unordered_map<const CUCache *, std::shared_ptr<EntropyCoding::CUCache>>                 cu_caches;
+  std::unordered_map<const PUCache *, std::shared_ptr<EntropyCoding::PUCache>>                 pu_caches;
+  std::unordered_map<const TUCache *, std::shared_ptr<EntropyCoding::TUCache>>                 tu_caches;
+
+  std::vector<const CodingStructure *> queue{ this };
+  int                                  queue_idx = 0;
+  while (queue_idx < queue.size())
+  {
+    const CodingStructure *cs = queue[queue_idx++];
+    if (cs != nullptr && css.find(cs) == css.end())
+    {
+      queue.push_back(cs->parent);
+
+      std::array<EntropyCoding::UnitScale, MAX_NUM_COMPONENT> _unitScale;
+      EntropyCoding::copy_array(cs->unitScale, _unitScale);
+
+      css[cs] = std::make_shared<EntropyCoding::CodingStructure>(
+        cs->area, _unitScale, cs->chromaQpAdj, static_cast<EntropyCoding::TreeType>(cs->treeType),
+        static_cast<EntropyCoding::ModeType>(cs->modeType), cs->prevPLT, cs->m_isTuEnc, cs->m_cuIdx, cs->m_puIdx,
+        cs->m_tuIdx, cs->m_numCUs, cs->m_numPUs, cs->m_numTUs, cs->m_coeffs, cs->m_pcmbuf, cs->m_runType,
+        cs->m_offsets);
+
+      const int n_cus = cs->cus.size();
+      const int n_pus = cs->pus.size();
+      const int n_tus = cs->tus.size();
+      for (int i = 0; i < n_cus; ++i)
+      {
+        if (cs->cus[i] != nullptr && cu_map.find(cs->cus[i]) == cu_map.end())
+        {
+          cu_map[cs->cus[i]] = std::make_shared<EntropyCoding::CodingUnit>(*cs->cus[i]);
+          queue.push_back(cs->cus[i]->cs);
+          if (cs->cus[i]->slice != nullptr && slices.find(cs->cus[i]->slice) == slices.end())
+          {
+            slices[cs->cus[i]->slice] = std::make_shared<EntropyCoding::Slice>(*cs->cus[i]->slice);
+          }
+        }
+      }
+      for (int i = 0; i < n_pus; ++i)
+      {
+        if (cs->pus[i] != nullptr && pu_map.find(cs->pus[i]) == pu_map.end())
+        {
+          pu_map[cs->pus[i]] = std::make_shared<EntropyCoding::PredictionUnit>(*cs->pus[i]);
+          queue.push_back(cs->pus[i]->cs);
+        }
+      }
+      for (int i = 0; i < n_tus; ++i)
+      {
+        if (cs->tus[i] != nullptr && tu_map.find(cs->tus[i]) == tu_map.end())
+        {
+          tu_map[cs->tus[i]] = std::make_shared<EntropyCoding::TransformUnit>(*cs->tus[i]);
+          queue.push_back(cs->tus[i]->cs);
+        }
+      }
+
+      if (cs->picture != nullptr && pictures.find(cs->picture) == pictures.end())
+      {
+        pictures[cs->picture] = std::make_shared<EntropyCoding::Picture>(*cs->picture);
+        queue.push_back(cs->picture->cs);
+      }
+
+      if (cs->slice != nullptr && slices.find(cs->slice) == slices.end())
+      {
+        slices[cs->slice] = std::make_shared<EntropyCoding::Slice>(*cs->slice);
+      }
+
+      if (cs->sps != nullptr && spss.find(cs->sps) == spss.end())
+      {
+        spss[cs->sps] = std::make_shared<EntropyCoding::SPS>(*cs->sps);
+      }
+      if (cs->slice->getSPS() != nullptr && spss.find(cs->slice->getSPS()) == spss.end())
+      {
+        spss[cs->slice->getSPS()] = std::make_shared<EntropyCoding::SPS>(*cs->slice->getSPS());
+      }
+
+      if (cs->pps != nullptr && ppss.find(cs->pps) == ppss.end())
+      {
+        ppss[cs->pps] = std::make_shared<EntropyCoding::PPS>(*cs->pps);
+      }
+      if (cs->slice->getPPS() != nullptr && ppss.find(cs->slice->getPPS()) == ppss.end())
+      {
+        ppss[cs->slice->getPPS()] = std::make_shared<EntropyCoding::PPS>(*cs->slice->getPPS());
+      }
+
+      if (cs->picHeader != nullptr && pic_headers.find(cs->picHeader) == pic_headers.end())
+      {
+        pic_headers[cs->picHeader] = std::make_shared<EntropyCoding::PicHeader>(*cs->picHeader);
+      }
+      if (cs->slice->getPicHeader() != nullptr && pic_headers.find(cs->slice->getPicHeader()) == pic_headers.end())
+      {
+        pic_headers[cs->slice->getPicHeader()] = std::make_shared<EntropyCoding::PicHeader>(*cs->slice->getPicHeader());
+      }
+
+      if (cs->pcv != nullptr && pre_calc_values.find(cs->pcv) == pre_calc_values.end())
+      {
+        pre_calc_values[cs->pcv] = std::make_shared<EntropyCoding::PreCalcValues>(*cs->pcv);
+      }
+
+      if (cu_caches.find(&cs->m_cuCache) == cu_caches.end())
+      {
+        cu_caches[&cs->m_cuCache] = std::make_shared<EntropyCoding::CUCache>(cs->m_cuCache);
+      }
+      if (pu_caches.find(&cs->m_puCache) == pu_caches.end())
+      {
+        pu_caches[&cs->m_puCache] = std::make_shared<EntropyCoding::PUCache>(cs->m_puCache);
+      }
+      if (tu_caches.find(&cs->m_tuCache) == tu_caches.end())
+      {
+        tu_caches[&cs->m_tuCache] = std::make_shared<EntropyCoding::TUCache>(cs->m_tuCache);
+      }
+    }
   }
 
-  std::array<EntropyCoding::UnitScale, MAX_NUM_COMPONENT> _unitScale;
-  EntropyCoding::copy_array(unitScale, _unitScale);
-
-  const int                                    n_cus = cus.size(), n_pus = pus.size(), n_tus = tus.size();
-  std::vector<EntropyCoding::CodingUnit *>     _cus(n_cus);
-  std::vector<EntropyCoding::PredictionUnit *> _pus(n_pus);
-  std::vector<EntropyCoding::TransformUnit *>  _tus(n_tus);
-
-  std::unordered_map<CodingUnit *, EntropyCoding::CodingUnit *>         cu_map;
-  std::unordered_map<PredictionUnit *, EntropyCoding::PredictionUnit *> pu_map;
-  std::unordered_map<TransformUnit *, EntropyCoding::TransformUnit *>   tu_map;
-
-  for (int i = 0; i < n_cus; ++i)
+  for (const auto &cu_pair: cu_map)
   {
-    _cus[i]        = new EntropyCoding::CodingUnit(*cus[i]);
-    cu_map[cus[i]] = _cus[i];
-  }
-  for (int i = 0; i < n_pus; ++i)
-  {
-    _pus[i]        = new EntropyCoding::PredictionUnit(*pus[i]);
-    pu_map[pus[i]] = _pus[i];
-  }
-  for (int i = 0; i < n_tus; ++i)
-  {
-    _tus[i]        = new EntropyCoding::TransformUnit(*tus[i]);
-    tu_map[tus[i]] = _tus[i];
+    if (cu_pair.first != nullptr)
+    {
+      cu_pair.second->next    = get_or_default(cu_map, cu_pair.first->next);
+      cu_pair.second->firstPU = get_or_default(pu_map, cu_pair.first->firstPU);
+      cu_pair.second->lastPU  = get_or_default(pu_map, cu_pair.first->lastPU);
+      cu_pair.second->firstTU = get_or_default(tu_map, cu_pair.first->firstTU);
+      cu_pair.second->lastTU  = get_or_default(tu_map, cu_pair.first->lastTU);
+      cu_pair.second->cs      = get_or_default(css, cu_pair.first->cs);
+      cu_pair.second->slice   = get_or_default(slices, cu_pair.first->slice);
+    }
   }
 
-  for (int i = 0; i < n_cus; ++i)
+  for (const auto &pu_pair: pu_map)
   {
-    _cus[i]->next    = cu_map[cus[i]->next];
-    _cus[i]->firstPU = pu_map[cus[i]->firstPU];
-    _cus[i]->lastPU  = pu_map[cus[i]->lastPU];
-    _cus[i]->firstTU = tu_map[cus[i]->firstTU];
-    _cus[i]->lastTU  = tu_map[cus[i]->lastTU];
-  }
-  for (int i = 0; i < n_pus; ++i)
-  {
-    _pus[i]->cu   = cu_map[pus[i]->cu];
-    _pus[i]->next = pu_map[pus[i]->next];
-  }
-  for (int i = 0; i < n_tus; ++i)
-  {
-    _tus[i]->cu   = cu_map[tus[i]->cu];
-    _tus[i]->next = tu_map[tus[i]->next];
-    _tus[i]->prev = tu_map[tus[i]->prev];
+    if (pu_pair.first != nullptr)
+    {
+      pu_pair.second->cu   = get_or_default(cu_map, pu_pair.first->cu);
+      pu_pair.second->next = get_or_default(pu_map, pu_pair.first->next);
+      pu_pair.second->cs   = get_or_default(css, pu_pair.first->cs);
+    }
   }
 
-  return EntropyCoding::CodingStructure(
-    area, new EntropyCoding::Picture(*picture), _parent, new EntropyCoding::Slice(*slice), std::move(_unitScale),
-    chromaQpAdj, new EntropyCoding::SPS(*sps), new EntropyCoding::PPS(*pps), new EntropyCoding::PicHeader(*picHeader),
-    new EntropyCoding::PreCalcValues(*pcv), static_cast<EntropyCoding::TreeType>(treeType),
-    static_cast<EntropyCoding::ModeType>(modeType), std::move(_cus), std::move(_pus), std::move(_tus), prevPLT,
-    m_isTuEnc, m_cuIdx, m_puIdx, m_tuIdx, m_numCUs, m_numPUs, m_numTUs, m_cuCache, m_puCache, m_tuCache, m_coeffs,
-    m_pcmbuf, m_runType, m_offsets);
+  for (const auto &tu_pair: tu_map)
+  {
+    if (tu_pair.first != nullptr)
+    {
+      tu_pair.second->cu   = get_or_default(cu_map, tu_pair.first->cu);
+      tu_pair.second->next = get_or_default(tu_map, tu_pair.first->next);
+      tu_pair.second->prev = get_or_default(tu_map, tu_pair.first->prev);
+      tu_pair.second->cs   = get_or_default(css, tu_pair.first->cs);
+    }
+  }
+
+  for (const auto &cs_pair: css)
+  {
+    cs_pair.second->parent = get_shared_or_default(css, cs_pair.first->parent);
+
+    cs_pair.second->picture     = get_shared_or_default(pictures, cs_pair.first->picture);
+    cs_pair.second->picture->cs = get_or_default(css, cs_pair.first->picture->cs);
+
+    cs_pair.second->slice = get_shared_or_default(slices, cs_pair.first->slice);
+    cs_pair.second->slice->setPic(get_or_default(pictures, cs_pair.first->slice->getPic()));
+    cs_pair.second->slice->setSPS(get_or_default(spss, cs_pair.first->slice->getSPS()));
+    cs_pair.second->slice->setPPS(get_or_default(ppss, cs_pair.first->slice->getPPS()));
+    cs_pair.second->slice->setPicHeader(get_or_default(pic_headers, cs_pair.first->slice->getPicHeader()));
+
+    cs_pair.second->sps       = get_shared_or_default(spss, cs_pair.first->sps);
+    cs_pair.second->pps       = get_shared_or_default(ppss, cs_pair.first->pps);
+    cs_pair.second->picHeader = get_shared_or_default(pic_headers, cs_pair.first->picHeader);
+    cs_pair.second->pcv       = get_shared_or_default(pre_calc_values, cs_pair.first->pcv);
+
+    cs_pair.second->m_cuCache = get_shared_or_default(cu_caches, &cs_pair.first->m_cuCache);
+    cs_pair.second->m_puCache = get_shared_or_default(pu_caches, &cs_pair.first->m_puCache);
+    cs_pair.second->m_tuCache = get_shared_or_default(tu_caches, &cs_pair.first->m_tuCache);
+
+    const int                                    n_cus = cs_pair.first->cus.size();
+    const int                                    n_pus = cs_pair.first->pus.size();
+    const int                                    n_tus = cs_pair.first->tus.size();
+    std::vector<std::shared_ptr<EntropyCoding::CodingUnit>>     _cus(n_cus);
+    std::vector<std::shared_ptr<EntropyCoding::PredictionUnit>> _pus(n_pus);
+    std::vector<std::shared_ptr<EntropyCoding::TransformUnit>>  _tus(n_tus);
+
+    for (int i = 0; i < n_cus; ++i)
+    {
+      _cus[i] = get_shared_or_default(cu_map, cs_pair.first->cus[i]);
+    }
+    for (int i = 0; i < n_pus; ++i)
+    {
+      _pus[i] = get_shared_or_default(pu_map, cs_pair.first->pus[i]);
+    }
+    for (int i = 0; i < n_tus; ++i)
+    {
+      _tus[i] = get_shared_or_default(tu_map, cs_pair.first->tus[i]);
+    }
+
+    cs_pair.second->cus = std::move(_cus);
+    cs_pair.second->pus = std::move(_pus);
+    cs_pair.second->tus = std::move(_tus);
+  }
+
+  return css[this];
 }
 
 const CodingStructure &CodingStructure::operator=(const EntropyCoding::CodingStructure &rhs)
@@ -177,10 +344,23 @@ const CodingStructure &CodingStructure::operator=(const EntropyCoding::CodingStr
   *picture    = *rhs.picture;
   chromaQpAdj = rhs.chromaQpAdj;
   *picHeader  = *rhs.picHeader;
+  *slice      = *rhs.slice;
   treeType    = static_cast<TreeType>(rhs.treeType);
   modeType    = static_cast<ModeType>(rhs.modeType);
-
+  if (parent)
+  {
+    *parent = *rhs.parent;
+  }
   std::copy(rhs.unitScale.begin(), rhs.unitScale.end(), unitScale);
+
+  std::unordered_map<const EntropyCoding::CodingStructure*, CodingStructure*> css;
+  const EntropyCoding::CodingStructure *src = &rhs;
+  CodingStructure *dst = this;
+  while (src) {
+    css[src] = dst;
+    src = src->parent.get();
+    dst = dst->parent;
+  }
 
   const int n_cus = rhs.cus.size(), n_pus = rhs.pus.size(), n_tus = rhs.tus.size();
   std::for_each(cus.begin(), cus.end(), [](CodingUnit *cu) { delete cu; });
@@ -197,24 +377,24 @@ const CodingStructure &CodingStructure::operator=(const EntropyCoding::CodingStr
   for (int i = 0; i < n_cus; ++i)
   {
     cus[i]             = new CodingUnit;
-    cus[i]->cs         = this;
+    cus[i]->cs         = css[rhs.cus[i]->cs];
     cus[i]->slice      = slice;
     *cus[i]            = *rhs.cus[i];
-    cu_map[rhs.cus[i]] = cus[i];
+    cu_map[rhs.cus[i].get()] = cus[i];
   }
   for (int i = 0; i < n_pus; ++i)
   {
     pus[i]             = new PredictionUnit;
-    pus[i]->cs         = this;
+    pus[i]->cs         = css[rhs.pus[i]->cs];
     *pus[i]            = *rhs.pus[i];
-    pu_map[rhs.pus[i]] = pus[i];
+    pu_map[rhs.pus[i].get()] = pus[i];
   }
   for (int i = 0; i < n_tus; ++i)
   {
     tus[i]             = new TransformUnit;
-    tus[i]->cs         = this;
+    tus[i]->cs         = css[rhs.tus[i]->cs];
     *tus[i]            = *rhs.tus[i];
-    tu_map[rhs.tus[i]] = tus[i];
+    tu_map[rhs.tus[i].get()] = tus[i];
   }
 
   for (int i = 0; i < n_cus; ++i)
@@ -245,9 +425,9 @@ const CodingStructure &CodingStructure::operator=(const EntropyCoding::CodingStr
   m_numCUs  = rhs.m_numCUs;
   m_numPUs  = rhs.m_numPUs;
   m_numTUs  = rhs.m_numTUs;
-  m_cuCache = rhs.m_cuCache;
-  m_puCache = rhs.m_puCache;
-  m_tuCache = rhs.m_tuCache;
+  m_cuCache = *rhs.m_cuCache;
+  m_puCache = *rhs.m_puCache;
+  m_tuCache = *rhs.m_tuCache;
   std::copy(rhs.m_coeffs.begin(), rhs.m_coeffs.end(), m_coeffs);
   std::copy(rhs.m_pcmbuf.begin(), rhs.m_pcmbuf.end(), m_pcmbuf);
   std::copy(rhs.m_runType.begin(), rhs.m_runType.end(), m_runType);

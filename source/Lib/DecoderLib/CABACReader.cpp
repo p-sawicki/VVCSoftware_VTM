@@ -66,8 +66,9 @@
 void CABACReader::initCtxModels( Slice& slice )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *slice.getPic()->cs;
-  m_cabacReader.initCtxModels(*cs.slice);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = slice.getPic()->cs->get_cs();
+  m_cabacReader.initCtxModels(*cs->slice);
+  *m_Bitstream = *m_entropyCodingBitstream;
 #else
   SliceType sliceType  = slice.getSliceType();
   int       qp         = slice.getSliceQp();
@@ -107,7 +108,9 @@ void CABACReader::initCtxModels( Slice& slice )
 bool CABACReader::terminating_bit()
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  return m_cabacReader.terminating_bit();
+  bool result = m_cabacReader.terminating_bit();
+  *m_Bitstream = *m_entropyCodingBitstream;
+  return result;
 #else
   if( m_BinDecoder.decodeBinTrm() )
   {
@@ -127,6 +130,7 @@ void CABACReader::remaining_bytes( bool noTrailingBytesExpected )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
   m_cabacReader.remaining_bytes(noTrailingBytesExpected);
+  *m_Bitstream = *m_entropyCodingBitstream;
 #else
   if( noTrailingBytesExpected )
   {
@@ -155,9 +159,10 @@ void CABACReader::remaining_bytes( bool noTrailingBytesExpected )
 void CABACReader::coding_tree_unit( CodingStructure& cs, const UnitArea& area, int (&qps)[2], unsigned ctuRsAddr )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure _cs = cs;
-  m_cabacReader.coding_tree_unit(_cs, area, qps, ctuRsAddr);
-  cs = _cs;
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
+  m_cabacReader.coding_tree_unit(*_cs, area, qps, ctuRsAddr);
+  cs = *_cs;
+  *m_Bitstream = *m_entropyCodingBitstream;
 #else
   CUCtx cuCtx( qps[CH_L] );
   QTBTPartitioner partitioner;

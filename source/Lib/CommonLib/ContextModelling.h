@@ -585,12 +585,13 @@ public:
 
   const CUCtx &operator=(const EntropyCoding::CUCtx &rhs)
   {
-    isDQPCoded         = rhs.isDQPCoded;
-    isChromaQpAdjCoded = rhs.isChromaQpAdjCoded;
-    qgStart            = rhs.qgStart;
-    lfnstLastScanPos   = rhs.lfnstLastScanPos;
-    qp                 = rhs.qp;
-    mtsLastScanPos     = rhs.mtsLastScanPos;
+    isDQPCoded                 = rhs.isDQPCoded;
+    isChromaQpAdjCoded         = rhs.isChromaQpAdjCoded;
+    qgStart                    = rhs.qgStart;
+    lfnstLastScanPos           = rhs.lfnstLastScanPos;
+    qp                         = rhs.qp;
+    mtsLastScanPos             = rhs.mtsLastScanPos;
+    violatesMtsCoeffConstraint = rhs.violatesMtsCoeffConstraint;
     std::copy(rhs.violatesLfnstConstrained.begin(), rhs.violatesLfnstConstrained.end(), violatesLfnstConstrained);
     return *this;
   }

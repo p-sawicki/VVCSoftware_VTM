@@ -56,7 +56,7 @@
 inline void setCtx(CABACWriter *writer, const TempCtx &tempCtx)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  writer->setCtx(Ctx::fromSubCtx(SAOCtx(tempCtx)));
+  writer->setCtx(SAOCtx(tempCtx));
 #else
   writer->getCtx() = SAOCtx(tempCtx);
 #endif

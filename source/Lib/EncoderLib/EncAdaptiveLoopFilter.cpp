@@ -54,7 +54,7 @@ inline void setCtx(CABACWriter *writer, const Ctx &ctx)
 inline void setCtx(CABACWriter *writer, SubCtx &&ctx)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  writer->setCtx(Ctx::fromSubCtx(ctx));
+  writer->setCtx(std::move(ctx));
 #else
   writer->getCtx() = std::move(ctx);
 #endif

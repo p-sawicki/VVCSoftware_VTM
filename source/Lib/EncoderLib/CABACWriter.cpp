@@ -56,8 +56,8 @@
 void CABACWriter::initCtxModels( const Slice& slice )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *slice.getPic()->cs;
-  m_cabacWriter.initCtxModels(*cs.slice);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = slice.getPic()->cs->get_cs();
+  m_cabacWriter.initCtxModels(*cs->slice);
 #else
   int       qp                = slice.getSliceQp();
   SliceType sliceType         = slice.getSliceType();
@@ -119,8 +119,8 @@ SliceType xGetCtxInitId( const Slice& slice, const BinEncIf& binEncoder, Ctx& ct
 SliceType CABACWriter::getCtxInitId( const Slice& slice )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *slice.getPic()->cs;
-  return static_cast<SliceType>(m_cabacWriter.getCtxInitId(*cs.slice));
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = slice.getPic()->cs->get_cs();
+  return static_cast<SliceType>(m_cabacWriter.getCtxInitId(*cs->slice));
 #else
   switch( m_TestCtx.getBPMType() )
   {
@@ -180,8 +180,8 @@ void CABACWriter::end_of_slice()
 void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, int (&qps)[2], unsigned ctuRsAddr, bool skipSao /* = false */, bool skipAlf /* = false */ )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure _cs = cs;
-  m_cabacWriter.coding_tree_unit(_cs, area, qps, ctuRsAddr, skipSao, skipAlf);
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
+  m_cabacWriter.coding_tree_unit(*_cs, area, qps, ctuRsAddr, skipSao, skipAlf);
 #else
   CUCtx cuCtx( qps[CH_L] );
   QTBTPartitioner partitioner;
@@ -593,7 +593,8 @@ void CABACWriter::mode_constraint( const PartSplit split, const CodingStructure&
 {
 #ifdef STANDALONE_ENTROPY_CODEC
   EntropyCoding::Partitioner *part = partitioner;
-  m_cabacWriter.mode_constraint(static_cast<EntropyCoding::PartSplit>(split), cs, *part,
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
+  m_cabacWriter.mode_constraint(static_cast<EntropyCoding::PartSplit>(split), *_cs, *part,
                                 static_cast<EntropyCoding::ModeType>(modeType));
   partitioner = *part;
   delete part;
@@ -624,7 +625,8 @@ void CABACWriter::split_cu_mode( const PartSplit split, const CodingStructure& c
 {
 #ifdef STANDALONE_ENTROPY_CODEC
   EntropyCoding::Partitioner *part = partitioner;
-  m_cabacWriter.split_cu_mode(static_cast<EntropyCoding::PartSplit>(split), cs, *part);
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
+  m_cabacWriter.split_cu_mode(static_cast<EntropyCoding::PartSplit>(split), *_cs, *part);
   partitioner = *part;
   delete part;
 #else
@@ -711,10 +713,10 @@ void CABACWriter::split_cu_mode( const PartSplit split, const CodingStructure& c
 void CABACWriter::coding_unit( const CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure _cs    = *cu.cs;
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs    = cu.cs->get_cs();
   EntropyCoding::Partitioner *   _part  = partitioner;
   EntropyCoding::CUCtx           _cuCtx = cuCtx;
-  m_cabacWriter.coding_unit(*_cs.cus[cu.idx - 1], *_part, _cuCtx);
+  m_cabacWriter.coding_unit(*_cs->cus[cu.idx - 1], *_part, _cuCtx);
   cuCtx       = _cuCtx;
   partitioner = *_part;
   delete _part;
@@ -791,8 +793,8 @@ void CABACWriter::coding_unit( const CodingUnit& cu, Partitioner& partitioner, C
 void CABACWriter::cu_skip_flag( const CodingUnit& cu )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *cu.cs;
-  m_cabacWriter.cu_skip_flag(*cs.cus[cu.idx - 1]);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = cu.cs->get_cs();
+  m_cabacWriter.cu_skip_flag(*cs->cus[cu.idx - 1]);
 #else
   unsigned ctxId = DeriveCtx::CtxSkipFlag( cu );
 
@@ -839,8 +841,8 @@ void CABACWriter::cu_skip_flag( const CodingUnit& cu )
 void CABACWriter::pred_mode( const CodingUnit& cu )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *cu.cs;
-  m_cabacWriter.pred_mode(*cs.cus[cu.idx - 1]);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = cu.cs->get_cs();
+  m_cabacWriter.pred_mode(*cs->cus[cu.idx - 1]);
 #else
   if (cu.cs->slice->getSPS()->getIBCFlag() && cu.chType != CHANNEL_TYPE_CHROMA)
   {
@@ -921,8 +923,8 @@ void CABACWriter::pred_mode( const CodingUnit& cu )
 void CABACWriter::bdpcm_mode( const CodingUnit& cu, const ComponentID compID )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *cu.cs;
-  m_cabacWriter.bdpcm_mode(*cs.cus[cu.idx - 1], static_cast<EntropyCoding::ComponentID>(compID));
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = cu.cs->get_cs();
+  m_cabacWriter.bdpcm_mode(*cs->cus[cu.idx - 1], static_cast<EntropyCoding::ComponentID>(compID));
 #else
   if (!cu.cs->sps->getBDPCMEnabledFlag())
   {
@@ -961,8 +963,8 @@ void CABACWriter::bdpcm_mode( const CodingUnit& cu, const ComponentID compID )
 void CABACWriter::cu_pred_data( const CodingUnit& cu )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *cu.cs;
-  m_cabacWriter.cu_pred_data(*cs.cus[cu.idx - 1]);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = cu.cs->get_cs();
+  m_cabacWriter.cu_pred_data(*cs->cus[cu.idx - 1]);
 #else
   if( CU::isIntra( cu ) )
   {
@@ -1266,8 +1268,8 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
 void CABACWriter::intra_luma_pred_mode( const PredictionUnit& pu )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *pu.cs;
-  m_cabacWriter.intra_luma_pred_mode(*cs.pus[pu.idx - 1]);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = pu.cs->get_cs();
+  m_cabacWriter.intra_luma_pred_mode(*cs->pus[pu.idx - 1]);
 #else
   if (pu.cu->bdpcmMode)
   {
@@ -1405,8 +1407,8 @@ void CABACWriter::intra_chroma_lmc_mode(const PredictionUnit& pu)
 void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *pu.cs;
-  m_cabacWriter.intra_chroma_pred_mode(*cs.pus[pu.idx - 1]);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = pu.cs->get_cs();
+  m_cabacWriter.intra_chroma_pred_mode(*cs->pus[pu.idx - 1]);
 #else
   const unsigned intraDir = pu.intraDir[1];
   if (pu.cu->colorTransform)
@@ -1458,10 +1460,10 @@ void CABACWriter::intra_chroma_pred_mode(const PredictionUnit& pu)
 void CABACWriter::cu_residual( const CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs     = *cu.cs;
+  std::shared_ptr<EntropyCoding::CodingStructure> cs     = cu.cs->get_cs();
   EntropyCoding::Partitioner *   part   = partitioner;
   EntropyCoding::CUCtx           _cuCtx = cuCtx;
-  m_cabacWriter.cu_residual(*cs.cus[cu.idx - 1], *part, _cuCtx);
+  m_cabacWriter.cu_residual(*cs->cus[cu.idx - 1], *part, _cuCtx);
   cuCtx       = _cuCtx;
   partitioner = *part;
   delete part;
@@ -1526,8 +1528,8 @@ void CABACWriter::rqt_root_cbf( const CodingUnit& cu )
 void CABACWriter::adaptive_color_transform(const CodingUnit& cu)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *cu.cs;
-  m_cabacWriter.adaptive_color_transform(*cs.cus[cu.idx - 1]);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = cu.cs->get_cs();
+  m_cabacWriter.adaptive_color_transform(*cs->cus[cu.idx - 1]);
 #else
   if (!cu.slice->getSPS()->getUseColorTrans())
   {
@@ -1624,9 +1626,9 @@ void CABACWriter::end_of_ctu( const CodingUnit& cu, CUCtx& cuCtx )
 void CABACWriter::cu_palette_info(const CodingUnit& cu, ComponentID compBegin, uint32_t numComp, CUCtx& cuCtx)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs     = *cu.cs;
+  std::shared_ptr<EntropyCoding::CodingStructure> cs     = cu.cs->get_cs();
   EntropyCoding::CUCtx           _cuCtx = cuCtx;
-  m_cabacWriter.cu_palette_info(*cs.cus[cu.idx - 1], static_cast<EntropyCoding::ComponentID>(compBegin), numComp,
+  m_cabacWriter.cu_palette_info(*cs->cus[cu.idx - 1], static_cast<EntropyCoding::ComponentID>(compBegin), numComp,
                                 _cuCtx);
   cuCtx = _cuCtx;
 #else
@@ -2106,8 +2108,8 @@ void CABACWriter::merge_flag( const PredictionUnit& pu )
 void CABACWriter::merge_data(const PredictionUnit& pu)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *pu.cs;
-  m_cabacWriter.merge_data(*cs.pus[pu.idx - 1]);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = pu.cs->get_cs();
+  m_cabacWriter.merge_data(*cs->pus[pu.idx - 1]);
 #else
   if (CU::isIBC(*pu.cu))
   {
@@ -2568,7 +2570,8 @@ void CABACWriter::transform_tree( const CodingStructure& cs, Partitioner& partit
 void CABACWriter::cbf_comp( const CodingStructure& cs, bool cbf, const CompArea& area, unsigned depth, const bool prevCbf, const bool useISP )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  m_cabacWriter.cbf_comp(cs, cbf, area, depth, prevCbf, useISP);
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
+  m_cabacWriter.cbf_comp(*_cs, cbf, area, depth, prevCbf, useISP);
 #else
   unsigned  ctxId = DeriveCtx::CtxQtCbf(area.compID, prevCbf, useISP && isLuma(area.compID));
   const CtxSet&   ctxSet  = Ctx::QtCbf[ area.compID ];
@@ -2830,8 +2833,8 @@ void CABACWriter::transform_unit( const TransformUnit& tu, CUCtx& cuCtx, Partiti
 void CABACWriter::cu_qp_delta( const CodingUnit& cu, int predQP, const int8_t qp )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *cu.cs;
-  m_cabacWriter.cu_qp_delta(*cs.cus[cu.idx - 1], predQP, qp);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = cu.cs->get_cs();
+  m_cabacWriter.cu_qp_delta(*cs->cus[cu.idx - 1], predQP, qp);
 #else
   CHECK(!( predQP != std::numeric_limits<int>::max()), "Unspecified error");
   int       DQp         = qp - predQP;
@@ -2861,8 +2864,8 @@ void CABACWriter::cu_qp_delta( const CodingUnit& cu, int predQP, const int8_t qp
 void CABACWriter::cu_chroma_qp_offset( const CodingUnit& cu )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *cu.cs;
-  m_cabacWriter.cu_chroma_qp_offset(*cs.cus[cu.idx - 1]);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = cu.cs->get_cs();
+  m_cabacWriter.cu_chroma_qp_offset(*cs->cus[cu.idx - 1]);
 #else
   // cu_chroma_qp_offset_flag
   unsigned qpAdj = cu.chromaQpAdj;
@@ -2897,8 +2900,8 @@ void CABACWriter::cu_chroma_qp_offset( const CodingUnit& cu )
 void CABACWriter::joint_cb_cr( const TransformUnit& tu, const int cbfMask )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *tu.cs;
-  m_cabacWriter.joint_cb_cr(*cs.tus[tu.idx - 1], cbfMask);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = tu.cs->get_cs();
+  m_cabacWriter.joint_cb_cr(*cs->tus[tu.idx - 1], cbfMask);
 #else
   if ( !tu.cu->slice->getSPS()->getJointCbCrEnabledFlag() )
   {
@@ -2917,13 +2920,13 @@ void CABACWriter::joint_cb_cr( const TransformUnit& tu, const int cbfMask )
 void CABACWriter::residual_coding( const TransformUnit& tu, ComponentID compID, CUCtx* cuCtx )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs     = *tu.cs;
-  EntropyCoding::CUCtx           _cuCtx;
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = tu.cs->get_cs();
+  EntropyCoding::CUCtx                            _cuCtx;
   if (cuCtx)
   {
     _cuCtx = *cuCtx;
   }
-  m_cabacWriter.residual_coding(*cs.tus[tu.idx - 1], static_cast<EntropyCoding::ComponentID>(compID),
+  m_cabacWriter.residual_coding(*cs->tus[tu.idx - 1], static_cast<EntropyCoding::ComponentID>(compID),
                                 cuCtx ? &_cuCtx : nullptr);
   if (cuCtx)
   {
@@ -3041,13 +3044,13 @@ void CABACWriter::ts_flag( const TransformUnit& tu, ComponentID compID )
 void CABACWriter::mts_idx( const CodingUnit& cu, CUCtx* cuCtx )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs = *cu.cs;
-  EntropyCoding::CUCtx           _cuCtx;
+  std::shared_ptr<EntropyCoding::CodingStructure> cs = cu.cs->get_cs();
+  EntropyCoding::CUCtx                            _cuCtx;
   if (cuCtx)
   {
     _cuCtx = *cuCtx;
   }
-  m_cabacWriter.mts_idx(*cs.cus[cu.idx - 1], cuCtx ? &_cuCtx : nullptr);
+  m_cabacWriter.mts_idx(*cs->cus[cu.idx - 1], cuCtx ? &_cuCtx : nullptr);
   if (cuCtx)
   {
     *cuCtx = _cuCtx;
@@ -3109,9 +3112,9 @@ void CABACWriter::isp_mode( const CodingUnit& cu )
 void CABACWriter::residual_lfnst_mode( const CodingUnit& cu, CUCtx& cuCtx )
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::CodingStructure cs     = *cu.cs;
-  EntropyCoding::CUCtx           _cuCtx = cuCtx;
-  m_cabacWriter.residual_lfnst_mode(*cs.cus[cu.idx - 1], _cuCtx);
+  std::shared_ptr<EntropyCoding::CodingStructure> cs     = cu.cs->get_cs();
+  EntropyCoding::CUCtx                            _cuCtx = cuCtx;
+  m_cabacWriter.residual_lfnst_mode(*cs->cus[cu.idx - 1], _cuCtx);
   cuCtx = _cuCtx;
 #else
   int chIdx = cu.isSepTree() && cu.chType == CHANNEL_TYPE_CHROMA ? 1 : 0;
@@ -3691,12 +3694,13 @@ void CABACWriter::exp_golomb_eqprob( unsigned symbol, unsigned count )
 void CABACWriter::codeAlfCtuEnableFlags( const CodingStructure& cs, ChannelType channel, AlfParam* alfParam)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
   EntropyCoding::AlfParam _alfParam;
   if (alfParam)
   {
     _alfParam = *alfParam;
   }
-  m_cabacWriter.codeAlfCtuEnableFlags(cs, static_cast<EntropyCoding::ChannelType>(channel),
+  m_cabacWriter.codeAlfCtuEnableFlags(*_cs, static_cast<EntropyCoding::ChannelType>(channel),
                                       alfParam ? &_alfParam : nullptr);
   if (alfParam)
   {
@@ -3736,12 +3740,13 @@ void CABACWriter::codeAlfCtuEnableFlags( const CodingStructure& cs, ComponentID 
 void CABACWriter::codeAlfCtuEnableFlag( const CodingStructure& cs, uint32_t ctuRsAddr, const int compIdx, AlfParam* alfParam)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
   EntropyCoding::AlfParam _alfParam;
   if (alfParam)
   {
     _alfParam = *alfParam;
   }
-  m_cabacWriter.codeAlfCtuEnableFlag(cs, ctuRsAddr, compIdx, alfParam ? &_alfParam : nullptr);
+  m_cabacWriter.codeAlfCtuEnableFlag(*_cs, ctuRsAddr, compIdx, alfParam ? &_alfParam : nullptr);
   if (alfParam)
   {
     *alfParam = _alfParam;
@@ -3779,7 +3784,8 @@ void CABACWriter::codeCcAlfFilterControlIdc(uint8_t idcVal, const CodingStructur
                                             const int filterCount)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  m_cabacWriter.codeCcAlfFilterControlIdc(idcVal, cs, static_cast<EntropyCoding::ComponentID>(compID), curIdx,
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
+  m_cabacWriter.codeCcAlfFilterControlIdc(idcVal, *_cs, static_cast<EntropyCoding::ComponentID>(compID), curIdx,
                                           filterControlIdc, lumaPos, filterCount);
 #else
   CHECK(idcVal > filterCount, "Filter index is too large");
@@ -3882,7 +3888,8 @@ void CABACWriter::mip_pred_mode( const PredictionUnit& pu )
 void CABACWriter::codeAlfCtuFilterIndex(const CodingStructure& cs, uint32_t ctuRsAddr, bool alfEnableLuma)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  m_cabacWriter.codeAlfCtuFilterIndex(cs, ctuRsAddr, alfEnableLuma);
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
+  m_cabacWriter.codeAlfCtuFilterIndex(*_cs, ctuRsAddr, alfEnableLuma);
 #else
   if ( (!cs.sps->getALFEnabledFlag()) || (!alfEnableLuma))
   {
@@ -3932,12 +3939,13 @@ void CABACWriter::codeAlfCtuFilterIndex(const CodingStructure& cs, uint32_t ctuR
 void CABACWriter::codeAlfCtuAlternatives( const CodingStructure& cs, ChannelType channel, AlfParam* alfParam)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
   EntropyCoding::AlfParam _alfParam;
   if (alfParam)
   {
     _alfParam = *alfParam;
   }
-  m_cabacWriter.codeAlfCtuAlternatives(cs, static_cast<EntropyCoding::ChannelType>(channel),
+  m_cabacWriter.codeAlfCtuAlternatives(*_cs, static_cast<EntropyCoding::ChannelType>(channel),
                                        alfParam ? &_alfParam : nullptr);
   if (alfParam)
   {
@@ -3979,12 +3987,13 @@ void CABACWriter::codeAlfCtuAlternatives( const CodingStructure& cs, ComponentID
 void CABACWriter::codeAlfCtuAlternative( const CodingStructure& cs, uint32_t ctuRsAddr, const int compIdx, const AlfParam* alfParam)
 {
 #ifdef STANDALONE_ENTROPY_CODEC
+  std::shared_ptr<EntropyCoding::CodingStructure> _cs = cs.get_cs();
   EntropyCoding::AlfParam _alfParam;
   if (alfParam)
   {
     _alfParam = *alfParam;
   }
-  m_cabacWriter.codeAlfCtuAlternative(cs, ctuRsAddr, compIdx, alfParam ? &_alfParam : nullptr);
+  m_cabacWriter.codeAlfCtuAlternative(*_cs, ctuRsAddr, compIdx, alfParam ? &_alfParam : nullptr);
 #else
   if( compIdx == COMPONENT_Y )
   {

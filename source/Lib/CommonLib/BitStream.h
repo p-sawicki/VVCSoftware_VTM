@@ -178,6 +178,17 @@ public:
     return EntropyCoding::InputBitstream(m_fifo, m_emulationPreventionByteLocation, m_fifo_idx, m_num_held_bits,
                                          m_held_bits, m_numBitsRead);
   }
+
+  InputBitstream &operator=(const EntropyCoding::InputBitstream &rhs)
+  {
+    m_fifo                            = rhs.m_fifo;
+    m_emulationPreventionByteLocation = rhs.m_emulationPreventionByteLocation;
+    m_fifo_idx                        = rhs.m_fifo_idx;
+    m_num_held_bits                   = rhs.m_num_held_bits;
+    m_held_bits                       = rhs.m_held_bits;
+    m_numBitsRead                     = rhs.m_numBitsRead;
+    return *this;
+  }
 #endif
 
   void resetToStart();

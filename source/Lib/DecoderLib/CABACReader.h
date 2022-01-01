@@ -61,10 +61,19 @@ public:
     , m_Bitstream(0)
 #ifdef STANDALONE_ENTROPY_CODEC
     , m_cabacReader(entropyCodingBinDecoder)
+    , m_entropyCodingBitstream(nullptr)
 #endif
   {
   }
-  virtual ~CABACReader() {}
+  virtual ~CABACReader()
+  {
+#ifdef STANDALONE_ENTROPY_CODEC
+    if (m_entropyCodingBitstream)
+    {
+      delete m_entropyCodingBitstream;
+    }
+#endif
+  }
 
 public:
   void        initCtxModels             ( Slice&                        slice );
@@ -77,6 +86,7 @@ public:
     }
     m_entropyCodingBitstream = new EntropyCoding::InputBitstream(*bitstream);
     m_cabacReader.initBitstream(m_entropyCodingBitstream);
+    m_Bitstream = bitstream;
 #else
     m_Bitstream = bitstream;
     m_BinDecoder.init(m_Bitstream);

@@ -66,6 +66,10 @@ endif()
 target_include_directories( ${LIB_NAME} PUBLIC . .. ./x86 ../libmd5 )
 target_link_libraries( ${LIB_NAME} INTERFACE LogLib)
 
+if( ENABLE_LOGGING )
+  target_compile_definitions( ${LIB_NAME} PUBLIC ENABLE_LOGGING=1)
+endif()
+
 if(STANDALONE_ENTROPY_CODEC)
   target_link_libraries( ${LIB_NAME} PUBLIC EntropyCodingLib)
   target_compile_definitions( ${LIB_NAME} PUBLIC STANDALONE_ENTROPY_CODEC)

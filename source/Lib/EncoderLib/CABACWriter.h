@@ -65,6 +65,7 @@ public:
     , m_Bitstream(0)
 #ifdef STANDALONE_ENTROPY_CODEC
     , m_cabacWriter(entropyCodingBinEncoder)
+    , m_entropyCodingBitstream(nullptr)
 #endif
   {
 #ifndef STANDALONE_ENTROPY_CODEC
@@ -117,6 +118,7 @@ public:
     m_ctx                  = ctx;
     m_cabacWriter.getCtx() = m_ctx;
   }
+  void setCtx(SubCtx &&ctx) { m_cabacWriter.getCtx().init(ctx.m_Ctx, ctx.m_CtxSet); }
 #else
   Ctx &getCtx() { return m_BinEncoder.getCtx(); }
 #endif

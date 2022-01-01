@@ -244,6 +244,16 @@ struct UnitArea
   {
   }
 
+  UnitArea &operator=(const EntropyCoding::UnitArea &rhs)
+  {
+    chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
+    for (int i = 0; i < blocks.size(); ++i)
+    {
+      blocks[i] = rhs.blocks[i];
+    }
+    return *this;
+  }
+
   operator EntropyCoding::UnitArea() const
   {
     return EntropyCoding::UnitArea(static_cast<EntropyCoding::ChromaFormat>(chromaFormat), blocks);
@@ -668,7 +678,7 @@ struct TransformUnit : public UnitArea
                                         depth, mtsIdx, noResidual, jointCbCr, cbf, idx, m_coeffs, m_pcmbuf, m_runType);
   }
 
-  const TransformUnit &operator=(const EntropyCoding::TransformUnit &rhs)
+  const TransformUnit &operator=(EntropyCoding::TransformUnit &rhs)
   {
     chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
     blocks       = rhs.blocks;
@@ -681,9 +691,15 @@ struct TransformUnit : public UnitArea
 
     std::copy(rhs.mtsIdx.begin(), rhs.mtsIdx.end(), mtsIdx);
     std::copy(rhs.cbf.begin(), rhs.cbf.end(), cbf);
-    std::copy(rhs.getCoeffs().begin(), rhs.getCoeffs().end(), m_coeffs);
-    std::copy(rhs.getPcmBuf().begin(), rhs.getPcmBuf().end(), m_pcmbuf);
-    std::copy(rhs.getRunType().begin(), rhs.getRunType().end(), m_runType);
+    for (int i = 0; i < MAX_NUM_TBLOCKS; ++i)
+    {
+      m_coeffs[i] = rhs.getCoeffs()[i];
+      m_pcmbuf[i] = rhs.getPcmBuf()[i];
+      if (i < MAX_NUM_TBLOCKS - 1)
+      {
+        m_runType[i] = rhs.getRunType()[i];
+      }
+    }
     return *this;
   }
 #endif

@@ -44,6 +44,10 @@
 #include <math.h>
 #include <iomanip>
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "rom.hpp"
+#endif
+
 // ====================================================================================================================
 // Initialize / destroy functions
 // ====================================================================================================================
@@ -277,6 +281,9 @@ uint32_t g_log2SbbSize[MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2] =
 // initialize ROM variables
 void initROM()
 {
+#ifdef STANDALONE_ENTROPY_CODEC
+  EntropyCoding::initROM();
+#endif
   gp_sizeIdxInfo = new SizeIndexInfoLog2();
   gp_sizeIdxInfo->init(MAX_CU_SIZE);
 

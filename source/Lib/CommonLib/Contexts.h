@@ -180,6 +180,11 @@ public:
   CtxSet( uint16_t offset, uint16_t size ) : Offset( offset ), Size( size ) {}
   CtxSet( const CtxSet& ctxSet ) : Offset( ctxSet.Offset ), Size( ctxSet.Size ) {}
   CtxSet( std::initializer_list<CtxSet> ctxSets );
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  operator EntropyCoding::CtxSet() const { return EntropyCoding::CtxSet(Offset, Size); }
+#endif
+
 public:
   uint16_t  operator()  ()  const
   {
@@ -358,16 +363,20 @@ class Ctx;
 class SubCtx
 {
   friend class Ctx;
+
 public:
-  SubCtx( const CtxSet& ctxSet, const Ctx& ctx ) : m_CtxSet( ctxSet          ), m_Ctx( ctx          ) {}
-  SubCtx( const SubCtx& subCtx )                 : m_CtxSet( subCtx.m_CtxSet ), m_Ctx( subCtx.m_Ctx ) {}
-  const SubCtx& operator= ( const SubCtx& ) = delete;
+  SubCtx(const CtxSet &ctxSet, const Ctx &ctx) : m_CtxSet(ctxSet), m_Ctx(ctx) {}
+  SubCtx(const SubCtx &subCtx) : m_CtxSet(subCtx.m_CtxSet), m_Ctx(subCtx.m_Ctx) {}
+
+  const SubCtx &operator=(const SubCtx &) = delete;
+#ifdef STANDALONE_ENTROPY_CODEC
+public:
+#else
 private:
-  const CtxSet  m_CtxSet;
-  const Ctx&    m_Ctx;
+#endif
+  const CtxSet m_CtxSet;
+  const Ctx &  m_Ctx;
 };
-
-
 
 class Ctx : public ContextSetCfg
 {
