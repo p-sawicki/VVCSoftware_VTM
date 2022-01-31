@@ -128,7 +128,11 @@ public:
   void    calCostSliceI       ( Picture* pcPic );
   void    calCostPictureI     ( Picture* picture );
   void    setLosslessSlice(Picture* pcPic, bool b);      ///< Set if the slice is lossless or not
-  void    encodeSlice         ( Picture* pcPic, OutputBitstream* pcSubstreams, uint32_t &numBinsCoded );
+#ifdef STANDALONE_ENTROPY_CODEC
+  void encodeSlice(Picture *pcPic, Common::OutputBitstream *pcSubstreams, uint32_t &numBinsCoded);
+#else
+  void encodeSlice(Picture *pcPic, OutputBitstream *pcSubstreams, uint32_t &numBinsCoded);
+#endif
   void    encodeCtus          ( Picture* pcPic, const bool bCompressEntireSlice, const bool bFastDeltaQP, EncLib* pcEncLib );
   void    checkDisFracMmvd    ( Picture* pcPic, uint32_t startCtuTsAddr, uint32_t boundingCtuTsAddr );
   void    setJointCbCrModes( CodingStructure& cs, const Position topLeftLuma, const Size sizeLuma );

@@ -282,7 +282,7 @@ uint32_t g_log2SbbSize[MAX_CU_DEPTH + 1][MAX_CU_DEPTH + 1][2] =
 void initROM()
 {
 #ifdef STANDALONE_ENTROPY_CODEC
-  EntropyCoding::initROM();
+  Common::initROM();
 #endif
   gp_sizeIdxInfo = new SizeIndexInfoLog2();
   gp_sizeIdxInfo->init(MAX_CU_SIZE);

@@ -890,17 +890,17 @@ struct SAOOffset
   void reset();
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::SAOOffset() const
+  operator Common::SAOOffset() const
   {
-    EntropyCoding::SAOOffset result;
-    result.modeIdc     = static_cast<EntropyCoding::SAOMode>(modeIdc);
+    Common::SAOOffset result;
+    result.modeIdc     = static_cast<Common::SAOMode>(modeIdc);
     result.typeIdc     = typeIdc;
     result.typeAuxInfo = typeAuxInfo;
-    EntropyCoding::copy_array(offset, result.offset);
+    Common::copy_array(offset, result.offset);
     return result;
   }
 
-  const SAOOffset &operator=(const EntropyCoding::SAOOffset &rhs)
+  const SAOOffset &operator=(const Common::SAOOffset &rhs)
   {
     modeIdc     = static_cast<SAOMode>(rhs.modeIdc);
     typeIdc     = rhs.typeIdc;
@@ -924,14 +924,14 @@ struct SAOBlkParam
   const SAOOffset& operator[](int compIdx) const { return offsetParam[compIdx];}
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::SAOBlkParam() const
+  operator Common::SAOBlkParam() const
   {
-    EntropyCoding::SAOBlkParam result;
-    EntropyCoding::copy_array(offsetParam, result.offsetParam);
+    Common::SAOBlkParam result;
+    Common::copy_array(offsetParam, result.offsetParam);
     return result;
   }
 
-  const SAOBlkParam &operator=(const EntropyCoding::SAOBlkParam &rhs)
+  const SAOBlkParam &operator=(const Common::SAOBlkParam &rhs)
   {
     std::copy(rhs.offsetParam.begin(), rhs.offsetParam.end(), offsetParam);
     return *this;
@@ -950,14 +950,14 @@ struct BitDepths
   int recon[MAX_NUM_CHANNEL_TYPE]; ///< the bit depth as indicated in the SPS
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::BitDepths() const
+  operator Common::BitDepths() const
   {
-    EntropyCoding::BitDepths result;
+    Common::BitDepths result;
     std::copy(recon, recon + MAX_NUM_CHANNEL_TYPE, result.recon.begin());
     return result;
   }
 
-  const BitDepths &operator=(const EntropyCoding::BitDepths &rhs)
+  const BitDepths &operator=(const Common::BitDepths &rhs)
   {
     std::copy(rhs.recon.begin(), rhs.recon.end(), recon);
     return *this;
@@ -1207,12 +1207,12 @@ public:
   }
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  template<typename CastT> operator EntropyCoding::static_vector<CastT, N>() const
+  template<typename CastT> operator Common::static_vector<CastT, N>() const
   {
-    return EntropyCoding::static_vector<CastT, N>(begin(), end());
+    return Common::static_vector<CastT, N>(begin(), end());
   }
 
-  template<typename CastT> const static_vector<T, N> &operator=(const EntropyCoding::static_vector<CastT, N> &rhs)
+  template<typename CastT> const static_vector<T, N> &operator=(const Common::static_vector<CastT, N> &rhs)
   {
     std::copy(rhs.data(), rhs.data() + rhs.size(), _arr);
     _size = rhs.size();
@@ -1311,14 +1311,14 @@ class dynamic_cache
 
 public:
 #ifdef STANDALONE_ENTROPY_CODEC
-  template<typename CastT> operator EntropyCoding::dynamic_cache<CastT>() const
+  template<typename CastT> operator Common::dynamic_cache<CastT>() const
   {
-    EntropyCoding::dynamic_cache<CastT> result;
+    Common::dynamic_cache<CastT> result;
     std::for_each(m_cache.begin(), m_cache.end(), [&](T *elem) { result.cache(new CastT(*elem)); });
     return result;
   }
 
-  template<typename CastT> const dynamic_cache<T> &operator=(const EntropyCoding::dynamic_cache<CastT> &rhs)
+  template<typename CastT> const dynamic_cache<T> &operator=(const Common::dynamic_cache<CastT> &rhs)
   {
     deleteEntries();
     std::for_each(rhs.m_cache.begin(), rhs.m_cache.end(), [&](CastT *elem) { cache(new T(*elem)); });

@@ -225,7 +225,11 @@ public:
   void  compressGOP ( int iPOCLast, int iNumPicRcvd, PicList& rcListPic, std::list<PelUnitBuf*>& rcListPicYuvRec,
                       bool isField, bool isTff, const InputColourSpaceConversion snr_conversion, const bool printFrameMSE,
                       bool printMSSSIM, bool isEncodeLtRef, const int picIdInGOP);
+#ifdef STANDALONE_ENTROPY_CODEC
+  void  xAttachSliceDataToNalUnit (OutputNALUnit& rNalu, Common::OutputBitstream* pcBitstreamRedirect);
+#else
   void  xAttachSliceDataToNalUnit (OutputNALUnit& rNalu, OutputBitstream* pcBitstreamRedirect);
+#endif
 
 
   int   getGOPSize()          { return  m_iGopSize;  }

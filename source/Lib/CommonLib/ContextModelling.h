@@ -577,13 +577,13 @@ public:
   ~CUCtx() {}
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::CUCtx() const
+  operator Common::CUCtx() const
   {
-    return EntropyCoding::CUCtx(isDQPCoded, isChromaQpAdjCoded, qgStart, lfnstLastScanPos, qp, violatesLfnstConstrained,
+    return Common::CUCtx(isDQPCoded, isChromaQpAdjCoded, qgStart, lfnstLastScanPos, qp, violatesLfnstConstrained,
                                 violatesMtsCoeffConstraint, mtsLastScanPos);
   }
 
-  const CUCtx &operator=(const EntropyCoding::CUCtx &rhs)
+  const CUCtx &operator=(const Common::CUCtx &rhs)
   {
     isDQPCoded                 = rhs.isDQPCoded;
     isChromaQpAdjCoded         = rhs.isChromaQpAdjCoded;

@@ -41,7 +41,11 @@
 //! \ingroup EncoderLib
 //! \{
 
+#ifdef STANDALONE_ENTROPY_CODEC
+void SEIWriter::xWriteSEIpayloadData(Common::OutputBitstream &bs, const SEI& sei, HRD &hrd, const uint32_t temporalId)
+#else
 void SEIWriter::xWriteSEIpayloadData(OutputBitstream &bs, const SEI& sei, HRD &hrd, const uint32_t temporalId)
+#endif
 {
   const SEIBufferingPeriod *bp = NULL;
   switch (sei.payloadType())
@@ -161,14 +165,22 @@ void SEIWriter::xWriteSEIpayloadData(OutputBitstream &bs, const SEI& sei, HRD &h
 /**
  * marshal all SEI messages in provided list into one bitstream bs
  */
+#ifdef STANDALONE_ENTROPY_CODEC
+void SEIWriter::writeSEImessages(Common::OutputBitstream& bs, const SEIMessages &seiList, HRD &hrd, bool isNested, const uint32_t temporalId)
+#else
 void SEIWriter::writeSEImessages(OutputBitstream& bs, const SEIMessages &seiList, HRD &hrd, bool isNested, const uint32_t temporalId)
+#endif
 {
 #if ENABLE_TRACING
   if (g_HLSTraceEnable)
     xTraceSEIHeader();
 #endif
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  Common::OutputBitstream bs_count;
+#else
   OutputBitstream bs_count;
+#endif
 
   for (SEIMessages::const_iterator sei=seiList.begin(); sei!=seiList.end(); sei++)
   {
@@ -521,7 +533,11 @@ void SEIWriter::xWriteSEIEdrapIndication(const SEIExtendedDrapIndication& sei)
   }
 }
 
+#ifdef STANDALONE_ENTROPY_CODEC
+void SEIWriter::xWriteSEIScalableNesting(Common::OutputBitstream& bs, const SEIScalableNesting& sei)
+#else
 void SEIWriter::xWriteSEIScalableNesting(OutputBitstream& bs, const SEIScalableNesting& sei)
+#endif
 {
   CHECK (sei.m_nestedSEIs.size()<1, "There must be at lease one SEI message nested in the scalable nesting SEI.")
 

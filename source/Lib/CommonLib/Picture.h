@@ -68,23 +68,23 @@ struct Picture : public UnitArea
   Picture();
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Picture() const
+  operator Common::Picture() const
   {
-    EntropyCoding::Picture result;
-    result.chromaFormat = static_cast<EntropyCoding::ChromaFormat>(chromaFormat);
-    result.blocks       = EntropyCoding::UnitBlocksType(blocks.begin(), blocks.end());
+    Common::Picture result;
+    result.chromaFormat = static_cast<Common::ChromaFormat>(chromaFormat);
+    result.blocks       = Common::UnitBlocksType(blocks.begin(), blocks.end());
     for (int i = 0; i < 2; ++i)
     {
       result.m_sao[i].resize(m_sao[i].size());
       std::copy(m_sao[i].begin(), m_sao[i].end(), result.m_sao[i].begin());
     }
-    EntropyCoding::copy_array(m_alfCtuEnableFlag, result.m_alfCtuEnableFlag);
+    Common::copy_array(m_alfCtuEnableFlag, result.m_alfCtuEnableFlag);
     result.m_alfCtbFilterIndex = m_alfCtbFilterIndex;
-    EntropyCoding::copy_array(m_alfCtuAlternative, result.m_alfCtuAlternative);
+    Common::copy_array(m_alfCtuAlternative, result.m_alfCtuAlternative);
     return result;
   }
 
-  const Picture &operator=(const EntropyCoding::Picture &rhs)
+  const Picture &operator=(const Common::Picture &rhs)
   {
     chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
     blocks       = UnitBlocksType(rhs.blocks.begin(), rhs.blocks.end());

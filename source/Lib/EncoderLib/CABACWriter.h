@@ -65,7 +65,6 @@ public:
     , m_Bitstream(0)
 #ifdef STANDALONE_ENTROPY_CODEC
     , m_cabacWriter(entropyCodingBinEncoder)
-    , m_entropyCodingBitstream(nullptr)
 #endif
   {
 #ifndef STANDALONE_ENTROPY_CODEC
@@ -73,34 +72,21 @@ public:
     m_EncCu   = NULL;
 #endif
   }
-  virtual ~CABACWriter()
-  {
-#ifdef STANDALONE_ENTROPY_CODEC
-    if (m_entropyCodingBitstream)
-    {
-      delete m_entropyCodingBitstream;
-    }
-#endif
-  }
+  virtual ~CABACWriter() {}
 
 public:
   void        initCtxModels             ( const Slice&                  slice );
   void        setEncCu(EncCu* pcEncCu) { m_EncCu = pcEncCu; }
   SliceType   getCtxInitId              ( const Slice&                  slice );
-  void        initBitstream(OutputBitstream *bitstream)
-  {
 #ifdef STANDALONE_ENTROPY_CODEC
-    if (m_entropyCodingBitstream)
-    {
-      delete m_entropyCodingBitstream;
-    }
-    m_entropyCodingBitstream = new EntropyCoding::OutputBitstream(*bitstream);
-    m_cabacWriter.initBitstream(m_entropyCodingBitstream);
+  void initBitstream(Common::OutputBitstream *bitstream) { m_cabacWriter.initBitstream(bitstream); }
 #else
+  void initBitstream(OutputBitstream *bitstream)
+  {
     m_Bitstream = bitstream;
     m_BinEncoder.init(m_Bitstream);
-#endif
   }
+#endif
 
   const Ctx &getCtx() const
   {
@@ -282,9 +268,8 @@ private:
 
 #ifdef STANDALONE_ENTROPY_CODEC
   mutable Ctx                     m_referenceCtx;
-  EntropyCoding::Ctx              m_ctx;
+  Common::Ctx              m_ctx;
   EntropyCoding::CABACWriter      m_cabacWriter;
-  EntropyCoding::OutputBitstream *m_entropyCodingBitstream;
 #endif
 };
 

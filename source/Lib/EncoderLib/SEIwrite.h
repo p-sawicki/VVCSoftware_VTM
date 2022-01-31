@@ -49,7 +49,11 @@ public:
   SEIWriter() {};
   virtual ~SEIWriter() {};
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  void writeSEImessages(Common::OutputBitstream& bs, const SEIMessages &seiList, HRD &hrd, bool isNested, const uint32_t temporalId);
+#else
   void writeSEImessages(OutputBitstream& bs, const SEIMessages &seiList, HRD &hrd, bool isNested, const uint32_t temporalId);
+#endif
 
 protected:
   void xWriteSEIuserDataUnregistered(const SEIuserDataUnregistered &sei);
@@ -60,7 +64,12 @@ protected:
   void xWriteSEIFrameFieldInfo(const SEIFrameFieldInfo& sei);
   void xWriteSEIDependentRAPIndication(const SEIDependentRAPIndication& sei);
   void xWriteSEIEdrapIndication(const SEIExtendedDrapIndication& sei);
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  void xWriteSEIScalableNesting(Common::OutputBitstream& bs, const SEIScalableNesting& sei);
+#else
   void xWriteSEIScalableNesting(OutputBitstream& bs, const SEIScalableNesting& sei);
+#endif
   void xWriteSEIFramePacking(const SEIFramePacking& sei);
   void xWriteSEIDisplayOrientation(const SEIDisplayOrientation& sei);
   void xWriteSEIParameterSetsInclusionIndication(const SEIParameterSetsInclusionIndication& sei);
@@ -88,7 +97,12 @@ protected:
   void xWriteSEIContentColourVolume(const SEIContentColourVolume &sei);
   void xWriteSEIColourTransformInfo(const SEIColourTransformInfo& sei);
   void xWriteSEIAnnotatedRegions                  (const SEIAnnotatedRegions& sei);
+  
+#ifdef STANDALONE_ENTROPY_CODEC
+  void xWriteSEIpayloadData(Common::OutputBitstream &bs, const SEI& sei, HRD &hrd, const uint32_t temporalId);
+#else
   void xWriteSEIpayloadData(OutputBitstream &bs, const SEI& sei, HRD &hrd, const uint32_t temporalId);
+#endif
   void xWriteByteAlign();
 protected:
   HRD m_nestingHrd;

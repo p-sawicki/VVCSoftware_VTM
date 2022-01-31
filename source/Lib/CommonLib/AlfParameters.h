@@ -150,15 +150,15 @@ struct AlfParam
   }
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::AlfParam() const
+  operator Common::AlfParam() const
   {
-    EntropyCoding::AlfParam result;
-    EntropyCoding::copy_array(enabledFlag, result.enabledFlag);
+    Common::AlfParam result;
+    Common::copy_array(enabledFlag, result.enabledFlag);
     result.numAlternativesChroma = numAlternativesChroma;
     return result;
   }
 
-  const AlfParam &operator=(const EntropyCoding::AlfParam &rhs)
+  const AlfParam &operator=(const Common::AlfParam &rhs)
   {
     std::copy(rhs.enabledFlag.begin(), rhs.enabledFlag.end(), enabledFlag);
     numAlternativesChroma = rhs.numAlternativesChroma;
@@ -274,11 +274,11 @@ struct CcAlfFilterParam
   }
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::CcAlfFilterParam() const
+  operator Common::CcAlfFilterParam() const
   {
-    EntropyCoding::CcAlfFilterParam result;
-    EntropyCoding::copy_array(ccAlfFilterEnabled, result.ccAlfFilterEnabled);
-    EntropyCoding::copy_array(ccAlfFilterCount, result.ccAlfFilterCount);
+    Common::CcAlfFilterParam result;
+    Common::copy_array(ccAlfFilterEnabled, result.ccAlfFilterEnabled);
+    Common::copy_array(ccAlfFilterCount, result.ccAlfFilterCount);
     return result;
   }
 #endif

@@ -72,7 +72,11 @@ struct OutputNALUnit : public NALUnit
     return *this;
   }
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  Common::OutputBitstream m_Bitstream;
+#else
   OutputBitstream m_Bitstream;
+#endif
 };
 
 void writeNaluWithHeader(std::ostream& out, OutputNALUnit& nalu);

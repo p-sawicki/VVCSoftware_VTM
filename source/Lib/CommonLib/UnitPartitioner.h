@@ -105,7 +105,7 @@ struct PartLevel
   PartLevel( const PartSplit _split,       Partitioning&& _parts );
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  PartLevel(const EntropyCoding::PartLevel &rhs)
+  PartLevel(const Common::PartLevel &rhs)
     : split(static_cast<PartSplit>(rhs.split))
     , idx(rhs.idx)
     , checkdIfImplicit(rhs.checkdIfImplicit)
@@ -121,7 +121,7 @@ struct PartLevel
     std::copy(rhs.parts.begin(), rhs.parts.end(), parts.begin());
   }
 
-  PartLevel &operator=(const EntropyCoding::PartLevel &rhs)
+  PartLevel &operator=(const Common::PartLevel &rhs)
   {
     split             = static_cast<PartSplit>(rhs.split);
     idx               = rhs.idx;
@@ -138,14 +138,14 @@ struct PartLevel
     return *this;
   }
 
-  operator EntropyCoding::PartLevel() const
+  operator Common::PartLevel() const
   {
-    EntropyCoding::Partitioning _parts(parts.size());
+    Common::Partitioning _parts(parts.size());
     std::copy(parts.begin(), parts.end(), _parts.begin());
 
-    return EntropyCoding::PartLevel(static_cast<EntropyCoding::PartSplit>(split), std::move(_parts), idx,
-                                    checkdIfImplicit, isImplicit, static_cast<EntropyCoding::PartSplit>(implicitSplit),
-                                    static_cast<EntropyCoding::PartSplit>(firstSubPartSplit), canQtSplit, qgEnable,
+    return Common::PartLevel(static_cast<Common::PartSplit>(split), std::move(_parts), idx,
+                                    checkdIfImplicit, isImplicit, static_cast<Common::PartSplit>(implicitSplit),
+                                    static_cast<Common::PartSplit>(firstSubPartSplit), canQtSplit, qgEnable,
                                     qgChromaEnable, modeType);
   }
 #endif
@@ -179,9 +179,9 @@ public:
 
   virtual ~Partitioner                    () { }
 #ifdef STANDALONE_ENTROPY_CODEC
-  virtual operator EntropyCoding::Partitioner *() const = 0;
+  virtual operator Common::Partitioner *() const = 0;
 
-  const Partitioner &operator=(const EntropyCoding::Partitioner &rhs)
+  const Partitioner &operator=(const Common::Partitioner &rhs)
   {
     m_partStack = rhs.getPartStack();
     currDepth           = rhs.currDepth;
@@ -241,12 +241,12 @@ class QTBTPartitioner : public AdaptiveDepthPartitioner
 {
 public:
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Partitioner *() const
+  operator Common::Partitioner *() const
   {
-    return new EntropyCoding::QTBTPartitioner(
+    return new Common::QTBTPartitioner(
       m_partStack, currDepth, currQtDepth, currTrDepth, currBtDepth, currMtDepth, currSubdiv, currQgPos,
-      currQgChromaPos, currImplicitBtDepth, static_cast<EntropyCoding::ChannelType>(chType),
-      static_cast<EntropyCoding::TreeType>(treeType), static_cast<EntropyCoding::ModeType>(modeType));
+      currQgChromaPos, currImplicitBtDepth, static_cast<Common::ChannelType>(chType),
+      static_cast<Common::TreeType>(treeType), static_cast<Common::ModeType>(modeType));
   }
 #endif
 
@@ -284,12 +284,12 @@ public:
   }
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Partitioner *() const
+  operator Common::Partitioner *() const
   {
-    return new EntropyCoding::TUIntraSubPartitioner(
+    return new Common::TUIntraSubPartitioner(
       m_partStack, currDepth, currQtDepth, currTrDepth, currBtDepth, currMtDepth, currSubdiv, currQgPos,
-      currQgChromaPos, currImplicitBtDepth, static_cast<EntropyCoding::ChannelType>(chType),
-      static_cast<EntropyCoding::TreeType>(treeType), static_cast<EntropyCoding::ModeType>(modeType));
+      currQgChromaPos, currImplicitBtDepth, static_cast<Common::ChannelType>(chType),
+      static_cast<Common::TreeType>(treeType), static_cast<Common::ModeType>(modeType));
   }
 #endif
 

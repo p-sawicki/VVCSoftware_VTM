@@ -80,10 +80,6 @@ public:
   OutputBitstream();
   ~OutputBitstream();
 
-#ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::OutputBitstream() { return EntropyCoding::OutputBitstream(m_fifo); }
-#endif
-
   // interface for encoding
   /**
    * append uiNumberOfBits least significant bits of uiBits to
@@ -173,13 +169,13 @@ public:
   InputBitstream(const InputBitstream &src);
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::InputBitstream() const
+  operator Common::InputBitstream() const
   {
-    return EntropyCoding::InputBitstream(m_fifo, m_emulationPreventionByteLocation, m_fifo_idx, m_num_held_bits,
+    return Common::InputBitstream(m_fifo, m_emulationPreventionByteLocation, m_fifo_idx, m_num_held_bits,
                                          m_held_bits, m_numBitsRead);
   }
 
-  InputBitstream &operator=(const EntropyCoding::InputBitstream &rhs)
+  InputBitstream &operator=(const Common::InputBitstream &rhs)
   {
     m_fifo                            = rhs.m_fifo;
     m_emulationPreventionByteLocation = rhs.m_emulationPreventionByteLocation;

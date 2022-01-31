@@ -2099,8 +2099,13 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
   Picture*        pcPic = NULL;
   PicHeader*      picHeader = NULL;
   Slice*      pcSlice;
+#ifdef STANDALONE_ENTROPY_CODEC
+  Common::OutputBitstream  *pcBitstreamRedirect;
+  pcBitstreamRedirect = new Common::OutputBitstream;
+#else
   OutputBitstream  *pcBitstreamRedirect;
   pcBitstreamRedirect = new OutputBitstream;
+#endif
   AccessUnit::iterator  itLocationToPushSliceHeaderNALU; // used to store location where NALU containing slice header is to be inserted
   Picture* scaledRefPic[MAX_NUM_REF] = {};
 
@@ -2918,7 +2923,11 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     const int numSubstreamsColumns = pcSlice->getPPS()->getNumTileColumns();
     const int numSubstreamRows     = pcSlice->getSPS()->getEntropyCodingSyncEnabledFlag() ? pcPic->cs->pcv->heightInCtus : (pcSlice->getPPS()->getNumTileRows());
     const int numSubstreams        = std::max<int> (numSubstreamRows * numSubstreamsColumns, (int) pcPic->cs->pps->getNumSlicesInPic());
+#if STANDALONE_ENTROPY_CODEC
+    std::vector<Common::OutputBitstream> substreamsOut(numSubstreams);
+#else
     std::vector<OutputBitstream> substreamsOut(numSubstreams);
+#endif
 
 #if ENABLE_QPA
     pcPic->m_uEnerHpCtu.resize (numberOfCtusInFrame);
@@ -3802,7 +3811,11 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
           m_HLSWriter->codeTilesWPPEntryPoint( pcSlice );
 
           // Append substreams...
+#ifdef STANDALONE_ENTROPY_CODEC
+          Common::OutputBitstream *pcOut = pcBitstreamRedirect;
+#else
           OutputBitstream *pcOut = pcBitstreamRedirect;
+#endif
           const int numSubstreamsToCode = pcSlice->getNumberOfSubstream() + 1;
 
           for ( uint32_t ui = 0 ; ui < numSubstreamsToCode; ui++ )
@@ -5539,7 +5552,11 @@ double EncGOP::xCalculateRVM()
  *  \param codedSliceData contains the coded slice data (bitstream) to be concatenated to rNalu
  *  \param rNalu          target NAL unit
  */
+#ifdef STANDALONE_ENTROPY_CODEC
+void EncGOP::xAttachSliceDataToNalUnit (OutputNALUnit& rNalu, Common::OutputBitstream* codedSliceData)
+#else
 void EncGOP::xAttachSliceDataToNalUnit (OutputNALUnit& rNalu, OutputBitstream* codedSliceData)
+#endif
 {
   // Byte-align
   rNalu.m_Bitstream.writeByteAlignment();   // Slice header byte-alignment

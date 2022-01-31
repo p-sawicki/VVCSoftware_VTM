@@ -57,19 +57,19 @@ struct PLTBuf {
   Pel            curPLT[MAX_NUM_COMPONENT][MAXPLTPREDSIZE];
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::PLTBuf() const
+  operator Common::PLTBuf() const
   {
-    EntropyCoding::PLTBuf result;
-    EntropyCoding::copy_array(curPLTSize, result.curPLTSize);
+    Common::PLTBuf result;
+    Common::copy_array(curPLTSize, result.curPLTSize);
     for (int i = 0; i < result.curPLT.size(); ++i)
     {
-      EntropyCoding::copy_array(curPLT[i], result.curPLT[i]);
+      Common::copy_array(curPLT[i], result.curPLT[i]);
     }
 
     return result;
   }
 
-  const PLTBuf &operator=(const EntropyCoding::PLTBuf &rhs)
+  const PLTBuf &operator=(const Common::PLTBuf &rhs)
   {
     std::copy(rhs.curPLTSize.begin(), rhs.curPLTSize.end(), curPLTSize);
     for (int i = 0; i < MAX_NUM_COMPONENT; ++i)
@@ -159,13 +159,13 @@ struct CompArea : public Area
   ComponentID compID;
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::CompArea() const
+  operator Common::CompArea() const
   {
-    return EntropyCoding::CompArea(static_cast<EntropyCoding::ComponentID>(compID),
-                                   static_cast<EntropyCoding::ChromaFormat>(chromaFormat), x, y, width, height);
+    return Common::CompArea(static_cast<Common::ComponentID>(compID),
+                                   static_cast<Common::ChromaFormat>(chromaFormat), x, y, width, height);
   }
 
-  const CompArea &operator=(const EntropyCoding::CompArea &rhs)
+  const CompArea &operator=(const Common::CompArea &rhs)
   {
     chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
     compID       = static_cast<ComponentID>(rhs.compID);
@@ -239,12 +239,12 @@ struct UnitArea
   UnitArea(const ChromaFormat _chromaFormat,       CompArea &&blkY,       CompArea &&blkCb,       CompArea &&blkCr);
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  UnitArea(const EntropyCoding::UnitArea &rhs)
+  UnitArea(const Common::UnitArea &rhs)
     : chromaFormat(static_cast<ChromaFormat>(rhs.chromaFormat)), blocks(rhs.blocks.begin(), rhs.blocks.end())
   {
   }
 
-  UnitArea &operator=(const EntropyCoding::UnitArea &rhs)
+  UnitArea &operator=(const Common::UnitArea &rhs)
   {
     chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
     for (int i = 0; i < blocks.size(); ++i)
@@ -254,9 +254,9 @@ struct UnitArea
     return *this;
   }
 
-  operator EntropyCoding::UnitArea() const
+  operator Common::UnitArea() const
   {
-    return EntropyCoding::UnitArea(static_cast<EntropyCoding::ChromaFormat>(chromaFormat), blocks);
+    return Common::UnitArea(static_cast<Common::ChromaFormat>(chromaFormat), blocks);
   }
 #endif
 
@@ -408,18 +408,18 @@ struct CodingUnit : public UnitArea
   CodingUnit(const ChromaFormat _chromaFormat, const Area &area);
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::CodingUnit() const
+  operator Common::CodingUnit() const
   {
-    return EntropyCoding::CodingUnit(static_cast<UnitArea>(*this), static_cast<EntropyCoding::ChannelType>(chType),
-                                     static_cast<EntropyCoding::PredMode>(predMode), depth, qtDepth, btDepth, mtDepth,
-                                     chromaQpAdj, qp, splitSeries, static_cast<EntropyCoding::TreeType>(treeType),
-                                     static_cast<EntropyCoding::ModeType>(modeType), modeTypeSeries, skip, mmvdSkip,
+    return Common::CodingUnit(static_cast<UnitArea>(*this), static_cast<Common::ChannelType>(chType),
+                                     static_cast<Common::PredMode>(predMode), depth, qtDepth, btDepth, mtDepth,
+                                     chromaQpAdj, qp, splitSeries, static_cast<Common::TreeType>(treeType),
+                                     static_cast<Common::ModeType>(modeType), modeTypeSeries, skip, mmvdSkip,
                                      affine, affineType, colorTransform, geoFlag, bdpcmMode, bdpcmModeChroma, imv,
                                      rootCbf, sbtInfo, tileIdx, lfnstIdx, BcwIdx, mipFlag, smvdMode, ispMode, useEscape,
                                      useRotation, reuseflag, lastPLTSize, reusePLTSize, curPLTSize, curPLT, idx);
   }
 
-  const CodingUnit &operator=(const EntropyCoding::CodingUnit &rhs)
+  const CodingUnit &operator=(const Common::CodingUnit &rhs)
   {
     chromaFormat    = static_cast<ChromaFormat>(rhs.chromaFormat);
     blocks          = rhs.blocks;
@@ -508,9 +508,9 @@ struct IntraPredictionData
   int      multiRefIdx;
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::IntraPredictionData() const
+  operator Common::IntraPredictionData() const
   {
-    return EntropyCoding::IntraPredictionData(intraDir, mipTransposedFlag, multiRefIdx);
+    return Common::IntraPredictionData(intraDir, mipTransposedFlag, multiRefIdx);
   }
 #endif
 };
@@ -556,23 +556,23 @@ struct InterPredictionData
   uint8_t   mmvdEncOptMode;                  // 0: no action 1: skip chroma MC for MMVD candidate pre-selection 2: skip chroma MC and BIO for MMVD candidate pre-selection
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::InterPredictionData() const
+  operator Common::InterPredictionData() const
   {
-    std::array<EntropyCoding::Mv, NUM_REF_PIC_LIST_01> _mvd;
-    EntropyCoding::copy_array(mvd, _mvd);
+    std::array<Common::Mv, NUM_REF_PIC_LIST_01> _mvd;
+    Common::copy_array(mvd, _mvd);
 
-    std::array<EntropyCoding::Mv, NUM_REF_PIC_LIST_01> _mv;
-    EntropyCoding::copy_array(mv, _mv);
+    std::array<Common::Mv, NUM_REF_PIC_LIST_01> _mv;
+    Common::copy_array(mv, _mv);
 
-    EntropyCoding::MvdAffi _mvdAffi;
+    Common::MvdAffi _mvdAffi;
     for (int i = 0; i < _mvdAffi.size(); ++i)
     {
-      EntropyCoding::copy_array(mvdAffi[i], _mvdAffi[i]);
+      Common::copy_array(mvdAffi[i], _mvdAffi[i]);
     }
 
-    return EntropyCoding::InterPredictionData(
+    return Common::InterPredictionData(
       mergeFlag, regularMergeFlag, mergeIdx, geoSplitDir, geoMergeIdx0, geoMergeIdx1, mmvdMergeFlag, mmvdMergeIdx,
-      interDir, mvpIdx, std::move(_mvd), std::move(_mv), refIdx, static_cast<EntropyCoding::MergeType>(mergeType),
+      interDir, mvpIdx, std::move(_mvd), std::move(_mv), refIdx, static_cast<Common::MergeType>(mergeType),
       std::move(_mvdAffi), ciipFlag);
   }
 #endif
@@ -590,14 +590,14 @@ struct PredictionUnit : public UnitArea, public IntraPredictionData, public Inte
   PredictionUnit(const ChromaFormat _chromaFormat, const Area &area);
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::PredictionUnit() const
+  operator Common::PredictionUnit() const
   {
-    return EntropyCoding::PredictionUnit(static_cast<UnitArea>(*this), static_cast<IntraPredictionData>(*this),
+    return Common::PredictionUnit(static_cast<UnitArea>(*this), static_cast<IntraPredictionData>(*this),
                                          static_cast<InterPredictionData>(*this),
-                                         static_cast<EntropyCoding::ChannelType>(chType), idx);
+                                         static_cast<Common::ChannelType>(chType), idx);
   }
 
-  const PredictionUnit &operator=(const EntropyCoding::PredictionUnit &rhs)
+  const PredictionUnit &operator=(const Common::PredictionUnit &rhs)
   {
     chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
     blocks       = rhs.blocks;
@@ -672,13 +672,13 @@ struct TransformUnit : public UnitArea
   TransformUnit(const ChromaFormat _chromaFormat, const Area &area);
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::TransformUnit() const
+  operator Common::TransformUnit() const
   {
-    return EntropyCoding::TransformUnit(static_cast<UnitArea>(*this), static_cast<EntropyCoding::ChannelType>(chType),
+    return Common::TransformUnit(static_cast<UnitArea>(*this), static_cast<Common::ChannelType>(chType),
                                         depth, mtsIdx, noResidual, jointCbCr, cbf, idx, m_coeffs, m_pcmbuf, m_runType);
   }
 
-  const TransformUnit &operator=(EntropyCoding::TransformUnit &rhs)
+  const TransformUnit &operator=(Common::TransformUnit &rhs)
   {
     chromaFormat = static_cast<ChromaFormat>(rhs.chromaFormat);
     blocks       = rhs.blocks;

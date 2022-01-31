@@ -109,9 +109,9 @@ struct AreaBuf : public Size
   AreaBuf( T *_buf, const int &_stride, const SizeType &_width, const SizeType &_height ) : Size( _width, _height ), buf( _buf ), stride( _stride )    { }
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  template<typename CastT> operator EntropyCoding::AreaBuf<CastT>() const
+  template<typename CastT> operator Common::AreaBuf<CastT>() const
   {
-    return EntropyCoding::AreaBuf<CastT>(buf, stride, width, height);
+    return Common::AreaBuf<CastT>(buf, stride, width, height);
   }
 #endif
 

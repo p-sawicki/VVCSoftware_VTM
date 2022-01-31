@@ -70,14 +70,32 @@ extern bool g_HLSTraceEnable;
 class VLCWriter
 {
 protected:
-
-  OutputBitstream*    m_pcBitIf;
+#ifdef STANDALONE_ENTROPY_CODEC
+  Common::OutputBitstream *m_pcBitIf;
+#else
+  OutputBitstream *m_pcBitIf;
+#endif
 
   VLCWriter() : m_pcBitIf(NULL) {}
   virtual ~VLCWriter() {}
 
-  void  setBitstream          ( OutputBitstream* p )  { m_pcBitIf = p;  }
-  OutputBitstream* getBitstream( )                    { return m_pcBitIf; }
+#ifdef STANDALONE_ENTROPY_CODEC
+  void setBitstream(Common::OutputBitstream *p)
+#else
+  void             setBitstream(OutputBitstream *p)
+#endif
+  {
+    m_pcBitIf = p;
+  }
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  Common::OutputBitstream *getBitstream()
+#else
+  OutputBitstream *getBitstream()
+#endif
+  {
+    return m_pcBitIf;
+  }
   void  xWriteSCode           ( int  code,  uint32_t length );
   void  xWriteCode            ( uint32_t uiCode, uint32_t uiLength );
   void  xWriteUvlc            ( uint32_t uiCode );
@@ -102,7 +120,11 @@ public:
   AUDWriter() {};
   virtual ~AUDWriter() {};
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  void  codeAUD(Common::OutputBitstream& bs, const bool audIrapOrGdrAuFlag, const int pictureType);
+#else
   void  codeAUD(OutputBitstream& bs, const bool audIrapOrGdrAuFlag, const int pictureType);
+#endif
 };
 
 class FDWriter : public VLCWriter
@@ -111,7 +133,11 @@ public:
   FDWriter() {};
   virtual ~FDWriter() {};
 
+#ifdef STANDALONE_ENTROPY_CODEC
+  void  codeFD(Common::OutputBitstream& bs, uint32_t &fdSize);
+#else
   void  codeFD(OutputBitstream& bs, uint32_t &fdSize);
+#endif
 };
 
 
@@ -128,7 +154,14 @@ private:
   void xCodePredWeightTable     ( PicHeader *picHeader, const PPS *pps, const SPS *sps );
   void xCodeScalingList         ( const ScalingList* scalingList, uint32_t scalinListId, bool isPredictor);
 public:
-  void  setBitstream            ( OutputBitstream* p )  { m_pcBitIf = p;  }
+#ifdef STANDALONE_ENTROPY_CODEC
+  void setBitstream(Common::OutputBitstream *p)
+#else
+  void             setBitstream(OutputBitstream *p)
+#endif
+  {
+    m_pcBitIf = p;
+  }
   uint32_t  getNumberOfWrittenBits  ()                      { return m_pcBitIf->getNumberOfWrittenBits();  }
   void  codeVUI                 ( const VUI *pcVUI, const SPS* pcSPS );
   void  codeSPS                 ( const SPS* pcSPS );

@@ -168,7 +168,11 @@ void VLCWriter::xWriteRbspTrailingBits()
   CHECK(cnt>=8, "More than '8' alignment bytes read");
 }
 
+#ifdef STANDALONE_ENTROPY_CODEC
+void AUDWriter::codeAUD(Common::OutputBitstream& bs, const bool audIrapOrGdrAuFlag, const int pictureType)
+#else
 void AUDWriter::codeAUD(OutputBitstream& bs, const bool audIrapOrGdrAuFlag, const int pictureType)
+#endif
 {
 #if ENABLE_TRACING
   xTraceAccessUnitDelimiter();
@@ -181,7 +185,11 @@ void AUDWriter::codeAUD(OutputBitstream& bs, const bool audIrapOrGdrAuFlag, cons
   xWriteRbspTrailingBits();
 }
 
+#ifdef STANDALONE_ENTROPY_CODEC
+void FDWriter::codeFD(Common::OutputBitstream& bs, uint32_t &fdSize)
+#else
 void FDWriter::codeFD(OutputBitstream& bs, uint32_t &fdSize)
+#endif
 {
 #if ENABLE_TRACING
   xTraceFillerData();
@@ -1224,8 +1232,13 @@ void HLSWriter::codeSPS( const SPS* pcSPS )
   WRITE_FLAG( pcSPS->getVuiParametersPresentFlag(),            "sps_vui_parameters_present_flag" );
   if (pcSPS->getVuiParametersPresentFlag())
   {
+#ifdef STANDALONE_ENTROPY_CODEC
+    Common::OutputBitstream *bs = getBitstream();
+    Common::OutputBitstream bs_count;
+#else
     OutputBitstream *bs = getBitstream();
     OutputBitstream bs_count;
+#endif
     setBitstream(&bs_count);
 #if ENABLE_TRACING
     bool traceEnable = g_HLSTraceEnable;

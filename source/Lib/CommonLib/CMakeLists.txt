@@ -75,10 +75,6 @@ if(STANDALONE_ENTROPY_CODEC)
   target_compile_definitions( ${LIB_NAME} PUBLIC STANDALONE_ENTROPY_CODEC)
 endif()
 
-if( ENABLE_LOGGING )
-  target_compile_definitions( ${LIB_NAME} PUBLIC ENABLE_LOGGING=1)
-endif()
-
 # set needed compile definitions
 set_property( SOURCE ${SSE41_SRC_FILES} APPEND PROPERTY COMPILE_DEFINITIONS USE_SSE41 )
 set_property( SOURCE ${SSE42_SRC_FILES} APPEND PROPERTY COMPILE_DEFINITIONS USE_SSE42 )

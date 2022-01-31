@@ -84,7 +84,12 @@ struct Subpicture {
   std::vector<std::pair<int, ApsType>> apsIds;
   PicHeader                            picHeader;
   std::vector<Slice>                   slices;
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  std::vector<Common::OutputBitstream>         sliceData;
+#else
   std::vector<OutputBitstream>         sliceData;
+#endif
   SEI                                  *decodedPictureHashSei;
 };
 
@@ -335,7 +340,11 @@ void SubpicMergeApp::parsePictureHeader(HLSyntaxReader &hlsReader, PicHeader &pi
 /**
   - Parse slice header and store slice data
 */
+#ifdef STANDALONE_ENTROPY_CODEC
+void SubpicMergeApp::parseSliceHeader(HLSyntaxReader &hlsReader, InputNALUnit &nalu, Slice &slice, PicHeader &picHeader, Common::OutputBitstream &sliceData, ParameterSetManager &psManager, int prevTid0Poc)
+#else
 void SubpicMergeApp::parseSliceHeader(HLSyntaxReader &hlsReader, InputNALUnit &nalu, Slice &slice, PicHeader &picHeader, OutputBitstream &sliceData, ParameterSetManager &psManager, int prevTid0Poc)
+#endif
 {
   slice.initSlice();
   slice.setNalUnitType(nalu.m_nalUnitType);

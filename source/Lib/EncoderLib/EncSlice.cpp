@@ -2001,8 +2001,11 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 //  m_uiPicDist       = cs.dist;
 
 }
-
-void EncSlice::encodeSlice   ( Picture* pcPic, OutputBitstream* pcSubstreams, uint32_t &numBinsCoded )
+#ifdef STANDALONE_ENTROPY_CODEC
+void EncSlice::encodeSlice(Picture *pcPic, Common::OutputBitstream *pcSubstreams, uint32_t &numBinsCoded)
+#else
+void EncSlice::encodeSlice(Picture *pcPic, OutputBitstream *pcSubstreams, uint32_t &numBinsCoded)
+#endif
 {
 
   Slice *const pcSlice                 = pcPic->slices[getSliceSegmentIdx()];
@@ -2093,20 +2096,21 @@ void EncSlice::encodeSlice   ( Picture* pcPic, OutputBitstream* pcSubstreams, ui
     {
       if (isLastCTUinWPP)
       {
-        EntropyCoding::binLogger.LogElement(EntropyCoding::SyntaxElement::end_of_subset_one_bit);
+        Common::binLogger.LogElement(Common::SyntaxElement::end_of_subset_one_bit);
       }
       if (isLastCTUinTile)
       {
-        EntropyCoding::binLogger.LogElement(EntropyCoding::SyntaxElement::end_of_tile_one_bit);
+        Common::binLogger.LogElement(Common::SyntaxElement::end_of_tile_one_bit);
       }
       if (isLastCTUsinSlice)
       {
-        EntropyCoding::binLogger.LogElement(EntropyCoding::SyntaxElement::end_of_slice_one_bit);
+        Common::binLogger.LogElement(Common::SyntaxElement::end_of_slice_one_bit);
       }
 
       m_CABACWriter->end_of_slice();  // end_of_slice_one_bit, end_of_tile_one_bit, or end_of_subset_one_bit
 
       // Byte-alignment in slice_data() when new tile
+
       pcSubstreams[uiSubStrm].writeByteAlignment();
 
       if (!isLastCTUsinSlice) //Byte alignment only when it is not the last substream in the slice

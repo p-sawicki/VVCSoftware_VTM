@@ -103,9 +103,9 @@ public:
   CodingStructure(CUCache&, PUCache&, TUCache&);
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  std::shared_ptr<EntropyCoding::CodingStructure> get_cs() const;
+  std::shared_ptr<Common::CodingStructure> clone() const;
 
-  const CodingStructure &operator=(const EntropyCoding::CodingStructure &rhs);
+  const CodingStructure &operator=(const Common::CodingStructure &rhs);
 #endif
 
   void create(const UnitArea &_unit, const bool isTopLayer, const bool isPLTused);

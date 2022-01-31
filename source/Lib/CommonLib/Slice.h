@@ -1322,13 +1322,13 @@ public:
   SPSRExt();
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::SPSRExt() const
+  operator Common::SPSRExt() const
   {
-    return EntropyCoding::SPSRExt(m_extendedPrecisionProcessingFlag, m_tsrcRicePresentFlag,
+    return Common::SPSRExt(m_extendedPrecisionProcessingFlag, m_tsrcRicePresentFlag,
                                   m_persistentRiceAdaptationEnabledFlag, m_rrcRiceExtensionEnableFlag);
   }
 
-  const SPSRExt &operator=(const EntropyCoding::SPSRExt &rhs)
+  const SPSRExt &operator=(const Common::SPSRExt &rhs)
   {
     m_extendedPrecisionProcessingFlag     = rhs.getExtendedPrecisionProcessingFlag();
     m_tsrcRicePresentFlag                 = rhs.getTSRCRicePresentFlag();
@@ -1574,10 +1574,10 @@ public:
   virtual                 ~SPS();
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::SPS() const
+  operator Common::SPS() const
   {
-    return EntropyCoding::SPS(
-      m_affineAmvrEnabledFlag, m_MMVD, m_SBT, m_ISP, static_cast<EntropyCoding::ChromaFormat>(m_chromaFormatIdc),
+    return Common::SPS(
+      m_affineAmvrEnabledFlag, m_MMVD, m_SBT, m_ISP, static_cast<Common::ChromaFormat>(m_chromaFormatIdc),
       m_log2MinCodingBlockSize, m_CTUSize, m_uiMaxCUWidth, m_transformSkipEnabledFlag, m_log2MaxTransformSkipBlockSize,
       m_BDPCMEnabledFlag, m_JointCbCrEnabledFlag, m_bitDepths, m_entropyCodingSyncEnabledFlag, m_qpBDOffset,
       m_log2MaxTbSize, m_saoEnabledFlag, m_spsRangeExtension, m_alfEnabledFlag, m_ccalfEnabledFlag, m_IBCFlag,
@@ -1585,7 +1585,7 @@ public:
       m_AffineType, m_bcw, m_ciip, m_Geo, m_MRL, m_MIP, m_maxNumMergeCand, m_maxNumIBCMergeCand, m_maxNumGeoCand);
   }
 
-  const SPS &operator=(const EntropyCoding::SPS &rhs)
+  const SPS &operator=(const Common::SPS &rhs)
   {
     m_affineAmvrEnabledFlag         = rhs.getAffineAmvrEnabledFlag();
     m_MMVD                          = rhs.getUseMMVD();
@@ -1628,7 +1628,7 @@ public:
 
     for (int i = 0; i < MAX_NUM_CHANNEL_TYPE; ++i)
     {
-      m_qpBDOffset[i] = rhs.getQpBDOffset(static_cast<EntropyCoding::ChannelType>(i));
+      m_qpBDOffset[i] = rhs.getQpBDOffset(static_cast<Common::ChannelType>(i));
     }
     return *this;
   }
@@ -2120,9 +2120,9 @@ public:
   virtual                ~PPS();
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::PPS() const
+  operator Common::PPS() const
   {
-    return EntropyCoding::PPS(m_useDQP, m_chromaQpOffsetListLen, m_ctuSize, m_numTileCols, m_tileColBd, m_ctuToTileCol,
+    return Common::PPS(m_useDQP, m_chromaQpOffsetListLen, m_ctuSize, m_numTileCols, m_tileColBd, m_ctuToTileCol,
                               m_ctuToTileRow, m_cabacInitPresentFlag, m_picWidthInLumaSamples,
                               m_picHeightInLumaSamples);
   }
@@ -2384,9 +2384,9 @@ public:
   virtual                ~APS();
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::APS() const { return EntropyCoding::APS(m_alfAPSParam); }
+  operator Common::APS() const { return Common::APS(m_alfAPSParam); }
 
-  const APS& operator=(const EntropyCoding::APS& rhs){ 
+  const APS& operator=(const Common::APS& rhs){ 
     m_alfAPSParam = rhs.getAlfAPSParam();
     return *this;
   }
@@ -2435,12 +2435,12 @@ struct WPScalingParam
   int  round;
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::WPScalingParam() const
+  operator Common::WPScalingParam() const
   {
     return { presentFlag, log2WeightDenom, codedWeight, codedOffset, w, o, offset, shift, round };
   }
 
-  const WPScalingParam &operator=(const EntropyCoding::WPScalingParam &rhs)
+  const WPScalingParam &operator=(const Common::WPScalingParam &rhs)
   {
     presentFlag     = rhs.presentFlag;
     log2WeightDenom = rhs.log2WeightDenom;
@@ -2557,14 +2557,14 @@ public:
   virtual                     ~PicHeader();
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::PicHeader() const
+  operator Common::PicHeader() const
   {
-    return EntropyCoding::PicHeader(m_splitConsOverrideFlag, m_cuQpDeltaSubdivIntra, m_cuQpDeltaSubdivInter,
+    return Common::PicHeader(m_splitConsOverrideFlag, m_cuQpDeltaSubdivIntra, m_cuQpDeltaSubdivInter,
                                     m_cuChromaQpOffsetSubdivIntra, m_cuChromaQpOffsetSubdivInter, m_mvdL1ZeroFlag,
                                     m_maxNumAffineMergeCand, m_minQT, m_maxMTTHierarchyDepth, m_maxBTSize, m_maxTTSize);
   }
 
-  const PicHeader &operator=(const EntropyCoding::PicHeader &rhs)
+  const PicHeader &operator=(const Common::PicHeader &rhs)
   {
     m_splitConsOverrideFlag       = rhs.getSplitConsOverrideFlag();
     m_cuQpDeltaSubdivIntra        = rhs.getCuQpDeltaSubdivIntra();
@@ -2908,30 +2908,30 @@ public:
   virtual                     ~Slice();
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Slice() const
+  operator Common::Slice() const
   {
-    std::array<EntropyCoding::APS *, ALF_CTB_MAX_NUM_APS> apss;
+    std::array<Common::APS *, ALF_CTB_MAX_NUM_APS> apss;
     std::transform(m_alfApss, m_alfApss + ALF_CTB_MAX_NUM_APS, apss.begin(),
-                   [](APS *aps) { return aps ? new EntropyCoding::APS(*aps) : nullptr; });
+                   [](APS *aps) { return aps ? new Common::APS(*aps) : nullptr; });
 
-    EntropyCoding::WeightPredTable table;
+    Common::WeightPredTable table;
     for (int i = 0; i < table.size(); ++i)
     {
       for (int j = 0; j < table.front().size(); ++j)
       {
-        EntropyCoding::copy_array(m_weightPredTable[i][j], table[i][j]);
+        Common::copy_array(m_weightPredTable[i][j], table[i][j]);
       }
     }
 
-    return EntropyCoding::Slice(
-      m_saoEnabledFlag, static_cast<EntropyCoding::SliceType>(m_eSliceType), m_iSliceQp, m_ChromaQpAdjEnabled,
+    return Common::Slice(
+      m_saoEnabledFlag, static_cast<Common::SliceType>(m_eSliceType), m_iSliceQp, m_ChromaQpAdjEnabled,
       m_depQuantEnabledFlag, m_riceBaseLevelValue, m_signDataHidingEnabledFlag, m_tsResidualCodingDisabledFlag,
       m_aiNumRefIdx, m_bCheckLDC, m_biDirPred, m_symRefIdx, m_independentSliceIdx, std::move(table), m_cabacInitFlag,
-      static_cast<EntropyCoding::SliceType>(m_encCABACTableIdx), std::move(apss), m_alfEnabledFlag, m_numAlfApsIdsLuma,
+      static_cast<Common::SliceType>(m_encCABACTableIdx), std::move(apss), m_alfEnabledFlag, m_numAlfApsIdsLuma,
       m_alfApsIdChroma, m_tsrc_index, m_riceBit, m_ccAlfFilterParam, m_ccAlfFilterControl);
   }
 
-  const Slice &operator=(const EntropyCoding::Slice &rhs)
+  const Slice &operator=(const Common::Slice &rhs)
   {
     for (int i = 0; i < ALF_CTB_MAX_NUM_APS; ++i)
     {
@@ -2950,11 +2950,11 @@ public:
 
     for (int i = 0; i < MAX_NUM_CHANNEL_TYPE; ++i)
     {
-      m_saoEnabledFlag[i] = rhs.getSaoEnabledFlag(static_cast<EntropyCoding::ChannelType>(i));
+      m_saoEnabledFlag[i] = rhs.getSaoEnabledFlag(static_cast<Common::ChannelType>(i));
     }
     for (int i = 0; i < NUM_REF_PIC_LIST_01; ++i)
     {
-      m_aiNumRefIdx[i] = rhs.getNumRefIdx(static_cast<EntropyCoding::RefPicList>(i));
+      m_aiNumRefIdx[i] = rhs.getNumRefIdx(static_cast<Common::RefPicList>(i));
     }
     for (int i = 0; i < 2; ++i)
     {
@@ -2962,7 +2962,7 @@ public:
     }
     for (int i = 0; i < MAX_NUM_COMPONENT; ++i)
     {
-      m_alfEnabledFlag[i] = rhs.getAlfEnabledFlag(static_cast<EntropyCoding::ComponentID>(i));
+      m_alfEnabledFlag[i] = rhs.getAlfEnabledFlag(static_cast<Common::ComponentID>(i));
     }
     for (int i = 0; i < 8; ++i)
     {
@@ -3411,9 +3411,9 @@ private:
 
 public:
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::PreCalcValues() const
+  operator Common::PreCalcValues() const
   {
-    return EntropyCoding::PreCalcValues(static_cast<EntropyCoding::ChromaFormat>(chrFormat), multiBlock422, maxCUWidth,
+    return Common::PreCalcValues(static_cast<Common::ChromaFormat>(chrFormat), multiBlock422, maxCUWidth,
                                         maxCUHeight, maxCUWidthMask, maxCUHeightMask, maxCUWidthLog2, maxCUHeightLog2,
                                         widthInCtus, sizeInCtus, noChroma2x2, ISingleTree, maxBtDepth, minBtSize,
                                         maxBtSize, minTtSize, maxTtSize, minQtSize);

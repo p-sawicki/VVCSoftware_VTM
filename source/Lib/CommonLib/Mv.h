@@ -84,9 +84,9 @@ public:
   Mv( int iHor, int iVer ) : hor( iHor ), ver( iVer ) {}
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Mv() const { return EntropyCoding::Mv(hor, ver); }
+  operator Common::Mv() const { return Common::Mv(hor, ver); }
 
-  const Mv &operator=(const EntropyCoding::Mv &rhs)
+  const Mv &operator=(const Common::Mv &rhs)
   {
     hor = rhs.hor;
     ver = rhs.ver;

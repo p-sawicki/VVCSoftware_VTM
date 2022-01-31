@@ -101,13 +101,13 @@ public:
   ~BinProbModel_Std ()                {}
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  BinProbModel_Std(const EntropyCoding::BinProbModel_Std &rhs)
+  BinProbModel_Std(const Common::BinProbModel_Std &rhs)
     : m_state{ rhs.getState0(), rhs.getState1() }, m_rate(rhs.getRate())
   {
   }
-  operator EntropyCoding::BinProbModel_Std() const
+  operator Common::BinProbModel_Std() const
   {
-    return EntropyCoding::BinProbModel_Std(m_state[0], m_state[1], m_rate);
+    return Common::BinProbModel_Std(m_state[0], m_state[1], m_rate);
   }
 #endif
 public:
@@ -182,7 +182,7 @@ public:
   CtxSet( std::initializer_list<CtxSet> ctxSets );
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::CtxSet() const { return EntropyCoding::CtxSet(Offset, Size); }
+  operator Common::CtxSet() const { return Common::CtxSet(Offset, Size); }
 #endif
 
 public:
@@ -321,18 +321,18 @@ public:
   CtxStore( const CtxStore<BinProbModel>& ctxStore );
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  template<typename CastT> CtxStore(const EntropyCoding::CtxStore<CastT> &rhs)
+  template<typename CastT> CtxStore(const Common::CtxStore<CastT> &rhs)
   {
     m_CtxBuffer.resize(rhs.getCtxBuffer().size());
     std::copy(rhs.getCtxBuffer().begin(), rhs.getCtxBuffer().end(), m_CtxBuffer.begin());
     m_Ctx = m_CtxBuffer.data();
   }
 
-  template<typename CastT> operator EntropyCoding::CtxStore<CastT>() const
+  template<typename CastT> operator Common::CtxStore<CastT>() const
   {
     std::vector<CastT> ctxBuffer(m_CtxBuffer.size());
     std::copy(m_CtxBuffer.begin(), m_CtxBuffer.end(), ctxBuffer.begin());
-    return EntropyCoding::CtxStore<CastT>(ctxBuffer);
+    return Common::CtxStore<CastT>(ctxBuffer);
   }
 #endif
 public:
@@ -386,15 +386,15 @@ public:
   Ctx( const Ctx&                 ctx   );
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  Ctx(const EntropyCoding::Ctx &rhs)
+  Ctx(const Common::Ctx &rhs)
     : m_BPMType(static_cast<BPMType>(rhs.getBPMType()))
-    , m_CtxStore_Std(rhs.operator const EntropyCoding::CtxStore<EntropyCoding::BinProbModel_Std> &())
+    , m_CtxStore_Std(rhs.operator const Common::CtxStore<Common::BinProbModel_Std> &())
   {
   }
 
-  operator EntropyCoding::Ctx() const
+  operator Common::Ctx() const
   {
-    return EntropyCoding::Ctx(static_cast<EntropyCoding::BPMType>(m_BPMType), m_CtxStore_Std);
+    return Common::Ctx(static_cast<Common::BPMType>(m_BPMType), m_CtxStore_Std);
   }
 #endif
 

@@ -55,9 +55,9 @@ struct Position
   Position(const PosType _x, const PosType _y) : x(_x), y(_y) { }
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Position() const { return EntropyCoding::Position(x, y); }
+  operator Common::Position() const { return Common::Position(x, y); }
 
-  const Position &operator=(const EntropyCoding::Position &rhs)
+  const Position &operator=(const Common::Position &rhs)
   {
     x = rhs.x;
     y = rhs.y;
@@ -85,8 +85,8 @@ struct Size
   Size(const SizeType _width, const SizeType _height) : width(_width), height(_height) { }
 
   #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::Size() const {
-    return EntropyCoding::Size(width, height);
+  operator Common::Size() const {
+    return Common::Size(width, height);
   }
   #endif
 
@@ -158,9 +158,9 @@ struct UnitScale
   int area;
 
 #ifdef STANDALONE_ENTROPY_CODEC
-  operator EntropyCoding::UnitScale() const { return EntropyCoding::UnitScale(posx, posy); }
+  operator Common::UnitScale() const { return Common::UnitScale(posx, posy); }
 
-  const UnitScale &operator=(const EntropyCoding::UnitScale &rhs)
+  const UnitScale &operator=(const Common::UnitScale &rhs)
   {
     posx = rhs.posx;
     posy = rhs.posy;

@@ -38,6 +38,10 @@
 #include <vector>
 #include <fstream>
 
+#ifdef STANDALONE_ENTROPY_CODEC
+#include "bit_stream.hpp"
+#endif
+
 
  //! \ingroup SubpicMergeApp
  //! \{
@@ -96,7 +100,12 @@ private:
   void parseAPS(HLSyntaxReader &hlsReader, ParameterSetManager &psManager, int &apsId, int &apsType);
   void parseSEI(SEIReader& seiReader, InputNALUnit &nalu, const VPS *vps, const SPS *sps, SEI *&decodePictureHashSei);
   void parsePictureHeader(HLSyntaxReader &hlsReader, PicHeader &picHeader, ParameterSetManager &psManager);
+
+#ifdef STANDALONE_ENTROPY_CODEC
+  void parseSliceHeader(HLSyntaxReader &hlsReader, InputNALUnit &nalu, Slice &slice, PicHeader &picHeader, Common::OutputBitstream &sliceData, ParameterSetManager &psManager, int prevTid0Poc);
+#else
   void parseSliceHeader(HLSyntaxReader &hlsReader, InputNALUnit &nalu, Slice &slice, PicHeader &picHeader, OutputBitstream &sliceData, ParameterSetManager &psManager, int prevTid0Poc);
+#endif
   void decodeNalu(Subpicture &subpic, InputNALUnit &nalu, SEI *&decodePictureHashSei);
   void parseSubpic(Subpicture &subpic, bool &morePictures);
   void generateMergedStreamVPSes(std::vector<VPS*> &vpsList);

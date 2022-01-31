@@ -84,7 +84,7 @@ public:
     {
       delete m_entropyCodingBitstream;
     }
-    m_entropyCodingBitstream = new EntropyCoding::InputBitstream(*bitstream);
+    m_entropyCodingBitstream = new Common::InputBitstream(*bitstream);
     m_cabacReader.initBitstream(m_entropyCodingBitstream);
     m_Bitstream = bitstream;
 #else
@@ -217,9 +217,9 @@ private:
 
 #ifdef STANDALONE_ENTROPY_CODEC
   mutable Ctx                    m_referenceCtx;
-  EntropyCoding::Ctx             m_ctx;
+  Common::Ctx             m_ctx;
   EntropyCoding::CABACReader     m_cabacReader;
-  EntropyCoding::InputBitstream *m_entropyCodingBitstream;
+  Common::InputBitstream *m_entropyCodingBitstream;
 #endif
 };
 
